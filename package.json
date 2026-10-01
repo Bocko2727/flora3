@@ -1,0 +1,47 @@
+{
+	"name": "flora3",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"dev": "vite dev --port 5174 --strictPort",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"db:start": "supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime",
+		"db:stop": "supabase stop",
+		"db:reset": "supabase db reset",
+		"db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
+		"env:local": "node scripts/write-local-env.mjs",
+		"test:unit": "vitest run --project unit",
+		"test:integration": "vitest run --project integration",
+		"test:db": "supabase test db",
+		"test:e2e": "playwright test",
+		"import:legacy": "tsx scripts/import-legacy.ts"
+	},
+	"dependencies": {
+		"@supabase/ssr": "^0.12.7",
+		"@supabase/supabase-js": "^2.117.2",
+		"exifr": "^7.1.3",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@playwright/test": "1.56.1",
+		"@sveltejs/adapter-vercel": "^6.3.4",
+		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^22.20.4",
+		"sharp": "^0.35.5",
+		"supabase": "2.119.0",
+		"svelte": "^5.57.1",
+		"svelte-check": "^4.7.6",
+		"tsx": "^4.23.15",
+		"typescript": "^6.0.3",
+		"vite": "^8.3.2",
+		"vitest": "^4.1.11"
+	}
+}

@@ -12,3 +12,4 @@ supabase/.temp/
 supabase/.branches/
 import-report*.json
 legacy-export*.json
+.vscode/
