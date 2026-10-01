@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(42);
 
 insert into auth.users (id, email, aud, role, instance_id) values
   ('11111111-1111-1111-1111-111111111111', 'editor@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
@@ -98,6 +98,21 @@ select throws_ok(
       '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000001/cccccccc-0000-0000-0000-000000000001_thumb.webp',
       'image/webp', 10, 10, 10, repeat('e', 64)) $$,
   '42501', null, 'viewer cannot add photos');
+select throws_ok($$ insert into public.editors (user_id) values ('22222222-2222-2222-2222-222222222222') $$,
+  '42501', null, 'viewer cannot promote themselves to editor');
+delete from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+delete from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001';
+select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  1, 'viewer delete of a plant changes nothing');
+select is((select count(*)::int from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  3, 'viewer delete of photos changes nothing');
+update public.plant_photos set is_primary = true where id = 'bbbbbbbb-0000-0000-0000-000000000001';
+update public.plant_photos set is_primary = false where id = 'bbbbbbbb-0000-0000-0000-000000000002';
+select is((select array_agg(id) from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001' and is_primary),
+  array['bbbbbbbb-0000-0000-0000-000000000002']::uuid[], 'viewer cannot change is_primary directly');
+select throws_ok($$ truncate public.plants $$, '42501', null, 'viewer cannot truncate plants');
+select throws_ok($$ truncate public.plant_photos $$, '42501', null, 'viewer cannot truncate plant_photos');
+select throws_ok($$ truncate public.editors $$, '42501', null, 'viewer cannot truncate editors');
 
 -- delete primary promotes the oldest remaining (same created_at in one transaction → lowest id)
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
@@ -108,6 +123,40 @@ select throws_ok($$ delete from public.plants where id = 'aaaaaaaa-0000-0000-000
   '23503', null, 'a plant with photos cannot be deleted');
 select throws_ok($$ update public.plant_photos set path = 'x' where id = 'bbbbbbbb-0000-0000-0000-000000000001' $$,
   '42501', null, 'photo paths are immutable for app users');
+
+-- a second editor with their own plant: editor 1 must not touch it
+reset role;
+insert into auth.users (id, email, aud, role, instance_id) values
+  ('33333333-3333-3333-3333-333333333333', 'editor2@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
+insert into public.editors (user_id) values ('33333333-3333-3333-3333-333333333333');
+insert into public.plants (id, owner_id, scientific_name, name_bg) values
+  ('dddddddd-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'Taraxacum officinale', 'Глухарче');
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select throws_ok(
+  $$ insert into public.plant_photos (id, plant_id, path, thumb_path, mime, width, height, bytes, sha256) values
+     ('eeeeeeee-0000-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001',
+      '11111111-1111-1111-1111-111111111111/dddddddd-0000-0000-0000-000000000001/eeeeeeee-0000-0000-0000-000000000001.webp',
+      '11111111-1111-1111-1111-111111111111/dddddddd-0000-0000-0000-000000000001/eeeeeeee-0000-0000-0000-000000000001_thumb.webp',
+      'image/webp', 10, 10, 10, repeat('f', 64)) $$,
+  '42501', null, 'editor cannot attach a photo to another editor''s plant');
+update public.plants set name_bg = 'Хакната' where id = 'dddddddd-0000-0000-0000-000000000001';
+select is((select name_bg from public.plants where id = 'dddddddd-0000-0000-0000-000000000001'),
+  'Глухарче', 'editor cannot update another editor''s plant');
+
+-- name checks
+select throws_ok(
+  $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000002', E'\t', 'Име') $$,
+  '23514', null, 'a tab-only scientific_name is rejected');
+select throws_ok(
+  $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000002', 'Bellis perennis', E' \t ') $$,
+  '23514', null, 'a whitespace-only name_bg is rejected');
+select throws_ok(
+  $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000002', 'Bellis perennis', E'\u00a0') $$,
+  '23514', null, 'a non-breaking-space-only name_bg is rejected');
+select throws_ok(
+  $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000002', repeat('a', 201), 'Име') $$,
+  '23514', null, 'a 201-character scientific_name is rejected');
 
 -- anon
 reset role;
@@ -128,6 +177,18 @@ set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","r
 select throws_ok(
   $$ insert into storage.objects (bucket_id, name) values ('photos', '22222222-2222-2222-2222-222222222222/x.webp') $$,
   '42501', null, 'viewer cannot upload');
+update storage.objects set name = '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/renamed.webp'
+  where bucket_id = 'photos' and name = '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/test.webp';
+select is((select count(*)::int from storage.objects
+  where bucket_id = 'photos' and name = '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/test.webp'),
+  1, 'viewer update of an editor''s storage object changes nothing');
+-- storage.protect_delete refuses every direct DELETE unless this setting is on; enable it so the RLS policy itself is what is tested
+set local storage.allow_delete_query = 'true';
+delete from storage.objects
+  where bucket_id = 'photos' and name = '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/test.webp';
+select is((select count(*)::int from storage.objects
+  where bucket_id = 'photos' and name = '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/test.webp'),
+  1, 'viewer delete of an editor''s storage object changes nothing');
 
 select * from finish();
 rollback;

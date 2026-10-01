@@ -24,8 +24,8 @@ grant execute on function public.is_editor() to authenticated;
 create table public.plants (
   id uuid primary key,
   owner_id uuid not null default auth.uid() references auth.users (id),
-  scientific_name text not null check (char_length(btrim(scientific_name)) between 1 and 200),
-  name_bg text not null check (char_length(btrim(name_bg)) between 1 and 200),
+  scientific_name text not null check (scientific_name ~ '\S' and char_length(scientific_name) <= 200),
+  name_bg text not null check (name_bg ~ '\S' and char_length(name_bg) <= 200),
   family text check (family is null or char_length(family) <= 100),
   description text check (description is null or char_length(description) <= 5000),
   habitat text check (habitat is null or char_length(habitat) <= 5000),
@@ -100,6 +100,7 @@ set search_path = ''
 as $$
 begin
   if old.is_primary then
+    perform pg_advisory_xact_lock(hashtextextended(old.plant_id::text, 0));
     update public.plant_photos set is_primary = true
     where id = (
       select id from public.plant_photos
@@ -141,6 +142,7 @@ grant execute on function public.set_primary_photo(uuid) to authenticated;
 -- Privileges ----------------------------------------------------------------
 revoke all on public.editors, public.plants, public.plant_photos from anon;
 revoke insert, update on public.plants, public.plant_photos, public.editors from authenticated;
+revoke truncate, references, trigger on public.editors, public.plants, public.plant_photos from authenticated;
 grant insert (id, scientific_name, name_bg, family, description, habitat, notes, status, confirmed_at)
   on public.plants to authenticated;
 grant update (scientific_name, name_bg, family, description, habitat, notes, status, confirmed_at)
@@ -185,7 +187,10 @@ create policy "photos: editor delete" on public.plant_photos
 -- Storage -------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('photos', 'photos', false, 10485760, array['image/webp', 'image/jpeg'])
-on conflict (id) do nothing;
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create policy "photos bucket: authenticated read" on storage.objects
   for select to authenticated using (bucket_id = 'photos');
