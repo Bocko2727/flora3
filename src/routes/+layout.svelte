@@ -1,11 +1,20 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
+	import '../app.css';
+	import type { LayoutProps } from './$types';
 
-	let { children } = $props();
+	let { data, children }: LayoutProps = $props();
 </script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
+{#if data.user}
+	<header class="site-header">
+		<a class="brand" href="/">Флора</a>
+		<form method="POST" action="/logout" class="session">
+			<span class="muted who">{data.user.email}</span>
+			<button type="submit" class="link-button">Изход</button>
+		</form>
+	</header>
+{/if}
 
-{@render children()}
+<main class="page">
+	{@render children()}
+</main>
