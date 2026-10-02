@@ -13,7 +13,20 @@ const secretKey = process.env.SUPABASE_SECRET_KEY;
 if (!url || !publishableKey || !secretKey) {
 	throw new Error('Run `npm run db:start && npm run env:local` before integration/e2e tests.');
 }
-if (!/^http:\/\/(127\.0\.0\.1|localhost)/.test(url)) {
+function isLocalUrl(value: string): boolean {
+	try {
+		const parsed = new URL(value);
+		return (
+			parsed.protocol === 'http:' &&
+			(parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
+			parsed.username === '' &&
+			parsed.password === ''
+		);
+	} catch {
+		return false;
+	}
+}
+if (!isLocalUrl(url)) {
 	throw new Error(`Refusing to run destructive test helpers against non-local Supabase: ${url}`);
 }
 
@@ -59,22 +72,35 @@ export async function signedInClient(user: TestUser): Promise<SupabaseClient<Dat
 	return client;
 }
 
-async function emptyBucket(admin: SupabaseClient<Database>): Promise<void> {
-	const bucket = admin.storage.from('photos');
-	const { data: owners, error } = await bucket.list('', { limit: 1000 });
-	if (error) throw error;
-	for (const owner of owners) {
-		const { data: plants } = await bucket.list(owner.name, { limit: 1000 });
-		for (const plant of plants ?? []) {
-			const prefix = `${owner.name}/${plant.name}`;
-			const { data: files } = await bucket.list(prefix, { limit: 1000 });
-			const paths = (files ?? []).map((file) => `${prefix}/${file.name}`);
-			if (paths.length) {
-				const { error: removeError } = await bucket.remove(paths);
-				if (removeError) throw removeError;
-			}
-		}
+const PAGE = 1000;
+type Bucket = ReturnType<SupabaseClient<Database>['storage']['from']>;
+
+async function listAll(bucket: Bucket, prefix: string) {
+	const entries = [];
+	for (let offset = 0; ; offset += PAGE) {
+		const { data, error } = await bucket.list(prefix, { limit: PAGE, offset });
+		if (error) throw error;
+		entries.push(...data);
+		if (data.length < PAGE) return entries;
 	}
+}
+
+// Entries with a null id are virtual folders; everything else is a file.
+async function emptyFolder(bucket: Bucket, prefix: string): Promise<void> {
+	const files: string[] = [];
+	for (const entry of await listAll(bucket, prefix)) {
+		const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+		if (entry.id === null) await emptyFolder(bucket, path);
+		else files.push(path);
+	}
+	for (let i = 0; i < files.length; i += PAGE) {
+		const { error } = await bucket.remove(files.slice(i, i + PAGE));
+		if (error) throw error;
+	}
+}
+
+async function emptyBucket(admin: SupabaseClient<Database>): Promise<void> {
+	await emptyFolder(admin.storage.from('photos'), '');
 }
 
 export async function resetCatalog(): Promise<void> {

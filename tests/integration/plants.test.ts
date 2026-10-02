@@ -94,4 +94,45 @@ describe('plant service', () => {
 		expect(unchanged?.name_bg).toBe('Паричка');
 		expect(unchanged?.status).toBe('unverified');
 	});
+
+	describe('deleting a plant with photos', () => {
+		async function plantWithPhotos(): Promise<{ id: string; photoIds: string[] }> {
+			const id = randomUUID();
+			await createPlant(editor, id, base);
+			const photoIds = [randomUUID(), randomUUID()];
+			for (const [index, photoId] of photoIds.entries()) {
+				const { error } = await adminClient().from('plant_photos').insert({
+					id: photoId,
+					plant_id: id,
+					owner_id: editorId,
+					path: `${editorId}/${id}/${photoId}.webp`,
+					thumb_path: `${editorId}/${id}/${photoId}_thumb.webp`,
+					mime: 'image/webp',
+					width: 100,
+					height: 100,
+					bytes: 10,
+					sha256: String(index + 5).repeat(64)
+				});
+				if (error) throw error;
+			}
+			return { id, photoIds };
+		}
+
+		it('is fully removed by the editor, photo rows included', async () => {
+			const { id } = await plantWithPhotos();
+			await deletePlant(editor, id);
+			expect(await getPlant(editor, id)).toBeNull();
+			const { data, error } = await adminClient().from('plant_photos').select('id').eq('plant_id', id);
+			if (error) throw error;
+			expect(data).toEqual([]);
+		});
+
+		it('is refused for a viewer and leaves the plant and both photos in place', async () => {
+			const { id, photoIds } = await plantWithPhotos();
+			await expect(deletePlant(viewer, id)).rejects.toBeInstanceOf(UserFacingError);
+			const plant = await getPlant(editor, id);
+			expect(plant).not.toBeNull();
+			expect(plant?.photos.map((p) => p.id).sort()).toEqual([...photoIds].sort());
+		});
+	});
 });

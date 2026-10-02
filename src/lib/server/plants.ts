@@ -62,25 +62,18 @@ export async function setPlantStatus(db: Db, id: string, status: PlantStatus): P
 }
 
 export async function deletePlant(db: Db, id: string): Promise<void> {
-	const { data: photos, error: listError } = await db
-		.from('plant_photos')
-		.select('path, thumb_path')
-		.eq('plant_id', id);
-	if (listError) throw new UserFacingError('Растението не можа да се изтрие.', listError);
-
-	if (photos.length > 0) {
-		const { error } = await db.from('plant_photos').delete().eq('plant_id', id);
-		if (error) throw new UserFacingError(describeDbError(error, 'Снимките не можаха да се изтрият.'), error);
+	const { data, error } = await db.rpc('delete_plant', { target_plant: id });
+	if (error) {
+		const message =
+			error.code === 'P0002'
+				? NOT_FOUND_OR_FORBIDDEN
+				: describeDbError(error, 'Растението не можа да се изтрие.');
+		throw new UserFacingError(message, error);
 	}
 
-	const { data: deleted, error } = await db.from('plants').delete().eq('id', id).select('id');
-	if (error) throw new UserFacingError(describeDbError(error, 'Растението не можа да се изтрие.'), error);
-	if (deleted.length === 0) throw new UserFacingError(NOT_FOUND_OR_FORBIDDEN);
-
-	if (photos.length > 0) {
-		const { error: removeError } = await db.storage
-			.from('photos')
-			.remove(photos.flatMap((photo) => [photo.path, photo.thumb_path]));
-		if (removeError) console.error('Orphaned photo files after deleting plant', id, removeError);
+	const paths = data.flatMap((row) => [row.path, row.thumb_path]);
+	if (paths.length > 0) {
+		const { error: removeError } = await db.storage.from('photos').remove(paths);
+		if (removeError) console.error('Orphaned photo files after deleting plant', id, paths, removeError);
 	}
 }
