@@ -1,25 +1,27 @@
 # Статус — Флора 3
-Клон: `fix/ai-polish` (от `main` 6a72cd6). Функция: доработки след ai-statuses-redesign.
+Клон: `feat/legacy-review` (от `main` dbea6b8). Функция: преглед на старите растения.
 
-## Production
-- `main` = 6a72cd6 (PR #2 merge-нат); Vercel production READY; `PLANTNET_API_KEY` е в Production.
-- Хостнат flora3 (`lfmkjxcaokndltdylama`), проверено само с четене:
-  - приложени: init, explicit_grants, identification_status, editors_no_delete (2026-10-02, authenticated вече няма DELETE върху editors);
-  - **НЕ е приложена: `drop_self_confirm`** — `apply_migration` е отказан два пъти при потвърждението; пуска се от собственика в SQL Editor (README → „Миграции на хостнатия проект“, т. 3). 0 растения с status='confirmed'; кодът не ползва колоните, затова не бърза.
-  - 97 растения, 117 снимки. *Cistus* sp. остава без снимка — собственикът се отказа от нея (2026-10-02).
-- Advisors (очаквано): api_usage без политики; consume_identify_quota/is_editor security definer; leaked password protection изключена (собственикът я пропуска).
-- Версиите в supabase_migrations не съвпадат с имената на файловете — не ползвай `supabase db push` към хоста.
+## Production (проверено само с четене, 2026-10-02)
+- `main` = dbea6b8 (PR #3); Vercel production READY; `PLANTNET_API_KEY` в Production.
+- Хостнат flora3: приложени init, explicit_grants, identification_status, editors_no_delete, drop_self_confirm (през SQL Editor от собственика).
+- 98 растения (97 стари + 1 от телефона с AI избор), 1 identification, Pl@ntNet работи на живо.
+- Backup: `backup.yml` + secret `SUPABASE_DB_URL`; ръчен run успешен (artifact ~55 KB).
+- Решения на собственика: снимката на Cistus и махането на import-legacy.yml — отказани; A7 — пропуснато.
+- Не ползвай `supabase db push` към хоста (версиите не съвпадат с имената на файловете).
 
-## fix/ai-polish (план: `docs/superpowers/plans/2026-10-02-flora3-post-merge.md`)
+## feat/legacy-review
+Spec: `docs/superpowers/specs/2026-10-02-flora3-legacy-review-design.md`; план: `docs/superpowers/plans/2026-10-02-flora3-legacy-review.md`.
 | Задача | Commit |
 |---|---|
-| B1 AI предложенията следват реално изпратените снимки | c969a3c |
-| B2 заключен „Разпознай по снимките“; Evidence busy във finally | 464a9e1 |
-| B3 четим печат за статуса (≥ 11 px) | fa41027 |
+| T1 миграция legacy_review + pgTAP | bfe8d3e |
+| T2 семейство от GBIF + Wikidata/Wikipedia | 44ae4a9, 2df111c |
+| T3 classify + решения | b2e7fa5 |
+| T4 endpoints + actions | c1bcd61 |
+| T5 екран „За преглед“ | 6d633af |
 
-Тестове (2026-10-02, пълен набор): pgTAP 76/76, unit 147/147, integration 49/49, e2e 16/16, svelte-check 0, build OK.
+Тестове (пълен набор, 2026-10-02): pgTAP 88/88, unit 165/165, integration 59/59, e2e 18/18, svelte-check 0, build OK. Live smoke: GBIF + Wikidata/bg.wikipedia отговарят (Mirabilis jalapa → „нощна красавица“ + статия).
 
-## Решения на собственика (2026-10-02)
-- A4 (снимката на Cistus) и A5 (махане на import-legacy.yml и NEW_SUPABASE_SECRET_KEY): отказани.
-- A7 (Sensitive ключ във Vercel, leaked password protection): пропуснати.
-- A6 (backup secret): прави го собственикът.
+## Пускане (одобрено от собственика 2026-10-02)
+1. Миграция `legacy_review` в хоста — преди merge.
+2. PR → merge от собственика → Vercel production.
+3. Пакетно разпознаване на 96 растения — собственикът натиска „Подготви прегледа“.

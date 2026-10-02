@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { EDITOR, VIEWER, adminClient, ensureUser, resetCatalog, type TestUser } from '../helpers/supabase';
@@ -367,6 +367,90 @@ test('clearing the photos drops the AI suggestions and saves no identification',
 	expect(count).toBe(0);
 	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
 	expect(plant.data).toEqual({ name_source: 'manual' });
+	await logout(page);
+});
+
+async function legacyPlantWithPhoto(name: string, file: string, extra: Record<string, unknown> = {}) {
+	const admin = adminClient();
+	const ownerId = await ensureUser(EDITOR, { editor: true });
+	const plantId = randomUUID();
+	const photoId = randomUUID();
+	const { error } = await admin
+		.from('plants')
+		.insert({ id: plantId, owner_id: ownerId, scientific_name: name, name_bg: `Старо ${name}`, name_source: 'legacy_ai', ...extra });
+	if (error) throw error;
+	const bytes = readFileSync(fixture(file));
+	const path = `${ownerId}/${plantId}/${photoId}.jpg`;
+	const thumb = `${ownerId}/${plantId}/${photoId}_thumb.jpg`;
+	for (const p of [path, thumb]) {
+		const up = await admin.storage.from('photos').upload(p, bytes, { contentType: 'image/jpeg' });
+		if (up.error) throw up.error;
+	}
+	const photo = await admin.from('plant_photos').insert({
+		id: photoId,
+		plant_id: plantId,
+		owner_id: ownerId,
+		path,
+		thumb_path: thumb,
+		mime: 'image/jpeg',
+		width: 100,
+		height: 100,
+		bytes: bytes.length,
+		sha256: createHash('sha256').update(bytes).update(plantId).digest('hex'),
+		is_primary: true
+	});
+	if (photo.error) throw photo.error;
+	return plantId;
+}
+
+test('editor reviews legacy plants', async ({ page }) => {
+	await resetCatalog();
+	const aster = await legacyPlantWithPhoto('Aster amellus', 'leaf-a.jpg');
+	const bellis = await legacyPlantWithPhoto('Bellis perennis', 'leaf-b.jpg', { gbif_match: 'accepted', gbif_key: 3117813, gbif_accepted_key: 3117813 });
+	await legacyPlantWithPhoto('Crocus sp.', 'rotated.jpg');
+
+	const replies = [
+		{ ok: true, modelVersion: 'v', candidates: [{ scientific_name: 'Erigeron annuus', authorship: null, family: 'Asteraceae', genus: 'Erigeron', common_names: [], score: 0.6, gbif_key: 3117424 }] },
+		JSON.parse(identifyOk),
+		{ ok: false, code: 'no_match', message: 'AI не разпозна растението. Попълни името сам.' }
+	];
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(replies[calls++]) })
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: /За преглед/ }).click();
+	await page.getByRole('button', { name: 'Подготви прегледа' }).click();
+	await expect(page.getByText('Готово.')).toBeVisible({ timeout: 60_000 });
+	expect(calls).toBe(3);
+
+	await expect(page.getByRole('heading', { name: /Не съвпадат/ })).toBeVisible();
+	await expect(page.getByRole('heading', { name: /Съвпадат/ })).toBeVisible();
+	await expect(page.getByRole('heading', { name: /Без резултат/ })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Приеми всички 1 съвпадения' }).click();
+	await page.getByRole('button', { name: 'Потвърди' }).click();
+	await expect(page.getByRole('heading', { name: /Съвпадат/ })).toBeHidden();
+
+	await page.getByRole('button', { name: 'Остави старото' }).click();
+	await expect(page.getByRole('heading', { name: /Не съвпадат/ })).toBeHidden();
+
+	const admin = adminClient();
+	const decisions = await admin.from('identifications').select('plant_id, decision').eq('source', 'review');
+	expect(decisions.data).toHaveLength(3);
+	expect(decisions.data!.find((d) => d.plant_id === bellis)?.decision).toBe('match');
+	expect(decisions.data!.find((d) => d.plant_id === aster)?.decision).toBe('kept');
+
+	await gotoSettled(page, `/plants/${bellis}`);
+	await expect(page.locator('.stamp')).toContainText('AI · прието име');
+	await logout(page);
+});
+
+test('viewer does not see the review', async ({ page }) => {
+	await login(page, VIEWER);
+	await expect(page.getByRole('link', { name: /За преглед/ })).toHaveCount(0);
+	const response = await page.goto('/review');
+	expect(response?.status()).toBe(404);
 	await logout(page);
 });
 

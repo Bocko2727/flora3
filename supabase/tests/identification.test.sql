@@ -22,9 +22,9 @@ select is((select public.id_status(p) from public.plants p where p.id = 'a300000
   'draft', 'a new plant is a draft');
 
 -- ai_gbif: accepted GBIF match + a candidate with score >= 0.30 ------------------
-insert into public.identifications (plant_id, photo_count, candidates) values
+insert into public.identifications (plant_id, photo_count, candidates, chosen_index) values
   ('a3000000-0000-0000-0000-000000000001', 1,
-   '[{"scientific_name":"Myosotis arvensis","score":0.62,"gbif_key":5341258}]');
+   '[{"scientific_name":"Myosotis arvensis","score":0.62,"gbif_key":5341258}]', 0);
 update public.plants set gbif_match = 'accepted', gbif_key = 5341258, gbif_accepted_key = 5341258
   where id = 'a3000000-0000-0000-0000-000000000001';
 select is((select public.id_status(p) from public.plants p where p.id = 'a3000000-0000-0000-0000-000000000001'),
@@ -34,11 +34,11 @@ select is((select public.id_status(p) from public.plants p where p.id = 'a300000
 insert into public.plants (id, scientific_name, name_bg, gbif_match, gbif_key, gbif_accepted_key) values
   ('a3000000-0000-0000-0000-000000000002', 'Myosotis arvensis', 'Незабравка', 'accepted', 5341258, 5341258),
   ('a3000000-0000-0000-0000-000000000003', 'Myosotis arvensis', 'Незабравка', 'accepted', 5341258, 5341258);
-insert into public.identifications (plant_id, photo_count, candidates) values
+insert into public.identifications (plant_id, photo_count, candidates, chosen_index) values
   ('a3000000-0000-0000-0000-000000000002', 1,
-   '[{"scientific_name":"Myosotis arvensis","score":0.29,"gbif_key":5341258}]'),
+   '[{"scientific_name":"Myosotis arvensis","score":0.29,"gbif_key":5341258}]', 0),
   ('a3000000-0000-0000-0000-000000000003', 1,
-   '[{"scientific_name":"Myosotis arvensis","score":0.30,"gbif_key":5341258}]');
+   '[{"scientific_name":"Myosotis arvensis","score":0.30,"gbif_key":5341258}]', 0);
 select is((select public.id_status(p) from public.plants p where p.id = 'a3000000-0000-0000-0000-000000000002'),
   'draft', 'score 0.29 stays a draft');
 select is((select public.id_status(p) from public.plants p where p.id = 'a3000000-0000-0000-0000-000000000003'),
@@ -47,18 +47,18 @@ select is((select public.id_status(p) from public.plants p where p.id = 'a300000
 -- name match is case-insensitive when the candidate has no gbif_key -------------------
 insert into public.plants (id, scientific_name, name_bg, gbif_match, gbif_key, gbif_accepted_key) values
   ('a3000000-0000-0000-0000-000000000004', 'Myosotis arvensis', 'Незабравка', 'accepted', 5341258, 5341258);
-insert into public.identifications (plant_id, photo_count, candidates) values
+insert into public.identifications (plant_id, photo_count, candidates, chosen_index) values
   ('a3000000-0000-0000-0000-000000000004', 1,
-   '[{"scientific_name":"MYOSOTIS ARVENSIS","score":0.5,"gbif_key":null}]');
+   '[{"scientific_name":"MYOSOTIS ARVENSIS","score":0.5,"gbif_key":null}]', 0);
 select is((select public.id_status(p) from public.plants p where p.id = 'a3000000-0000-0000-0000-000000000004'),
   'ai_gbif', 'candidate name matches case-insensitively');
 
 -- synonym resolved to the candidate key; doubtful never qualifies -------------------
 insert into public.plants (id, scientific_name, name_bg, gbif_match, gbif_key, gbif_accepted_key) values
   ('a3000000-0000-0000-0000-000000000005', 'Myosotis scorpioides', 'Незабравка', 'synonym', 111, 5341258);
-insert into public.identifications (plant_id, photo_count, candidates) values
+insert into public.identifications (plant_id, photo_count, candidates, chosen_index) values
   ('a3000000-0000-0000-0000-000000000005', 1,
-   '[{"scientific_name":"Myosotis arvensis","score":0.7,"gbif_key":5341258}]');
+   '[{"scientific_name":"Myosotis arvensis","score":0.7,"gbif_key":5341258}]', 0);
 select is((select public.id_status(p) from public.plants p where p.id = 'a3000000-0000-0000-0000-000000000005'),
   'ai_gbif', 'a synonym whose accepted key equals the candidate key is ai_gbif');
 update public.plants set gbif_match = 'doubtful' where id = 'a3000000-0000-0000-0000-000000000005';
@@ -89,8 +89,9 @@ select is(public.consume_identify_quota(), false, 'viewer gets false from consum
 
 -- editor: protocol is immutable --------------------------------------------------------
 set local request.jwt.claims = '{"sub":"33333333-0000-0000-0000-000000000003","role":"authenticated"}';
-select throws_ok($$ update public.identifications set chosen_index = 0 $$,
-  '42501', null, 'editor cannot update identifications');
+update public.identifications set chosen_index = 1 where source = 'manual';
+select is((select count(*)::int from public.identifications where chosen_index = 1), 0,
+  'editor cannot change manual identifications');
 select throws_ok($$ delete from public.identifications $$,
   '42501', null, 'editor cannot delete identifications');
 

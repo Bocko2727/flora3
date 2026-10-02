@@ -25,6 +25,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			scientific_name: fields.scientific_name,
 			family: fields.family,
 			description: fields.description,
+			description_source: fields.description_source,
+			wiki_url: fields.wiki_url,
 			habitat: fields.habitat,
 			notes: fields.notes,
 			id_status: fields.id_status,

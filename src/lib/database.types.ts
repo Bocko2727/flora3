@@ -51,13 +51,13 @@ export type Database = {
                   ]
                 },"identifications": {
                   Row: {
-                    "candidates": NonNullable<Json>,"chosen_index": number | null,"created_at": string,"id": string,"model_version": string | null,"owner_id": string,"photo_count": number,"plant_id": string,"provider": string
+                    "candidates": NonNullable<Json>,"chosen_index": number | null,"created_at": string,"decision": string | null,"id": string,"model_version": string | null,"owner_id": string,"photo_count": number,"plant_id": string,"provider": string,"source": string,"wiki": Json | null
                   }
                   Insert: {
-                    "candidates": NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count": number,"plant_id": string,"provider"?: string
+                    "candidates": NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"decision"?: string | null,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count": number,"plant_id": string,"provider"?: string,"source"?: string,"wiki"?: Json | null
                   }
                   Update: {
-                    "candidates"?: NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count"?: number,"plant_id"?: string,"provider"?: string
+                    "candidates"?: NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"decision"?: string | null,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count"?: number,"plant_id"?: string,"provider"?: string,"source"?: string,"wiki"?: Json | null
                   }
                   Relationships: [
                     {
@@ -89,13 +89,13 @@ isOneToOne: false
                   ]
                 },"plants": {
                   Row: {
-                    "created_at": string,"description": string | null,"family": string | null,"gbif_accepted_key": number | null,"gbif_accepted_name": string | null,"gbif_checked_at": string | null,"gbif_key": number | null,"gbif_match": string | null,"habitat": string | null,"id": string,"inat_checked_at": string | null,"inat_observation_id": number | null,"inat_quality_grade": string | null,"inat_taxon_name": string | null,"legacy_ai": Json | null,"name_bg": string,"name_source": string,"notes": string | null,"owner_id": string,"scientific_name": string,"updated_at": string,"id_status": string | null
+                    "created_at": string,"description": string | null,"description_source": string | null,"family": string | null,"gbif_accepted_key": number | null,"gbif_accepted_name": string | null,"gbif_checked_at": string | null,"gbif_key": number | null,"gbif_match": string | null,"habitat": string | null,"id": string,"inat_checked_at": string | null,"inat_observation_id": number | null,"inat_quality_grade": string | null,"inat_taxon_name": string | null,"legacy_ai": Json | null,"name_bg": string,"name_source": string,"notes": string | null,"owner_id": string,"scientific_name": string,"updated_at": string,"wiki_url": string | null,"id_status": string | null
                   }
                   Insert: {
-                    "created_at"?: string,"description"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id": string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg": string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name": string,"updated_at"?: string
+                    "created_at"?: string,"description"?: string | null,"description_source"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id": string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg": string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name": string,"updated_at"?: string,"wiki_url"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"description"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id"?: string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg"?: string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name"?: string,"updated_at"?: string
+                    "created_at"?: string,"description"?: string | null,"description_source"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id"?: string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg"?: string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name"?: string,"updated_at"?: string,"wiki_url"?: string | null
                   }
                   Relationships: [
                     
