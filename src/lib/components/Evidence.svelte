@@ -58,8 +58,11 @@
 		return () => {
 			busy = kind;
 			return async ({ update }: { update: (options?: { reset?: boolean }) => Promise<void> }) => {
-				await update({ reset: kind === 'link' });
-				busy = null;
+				try {
+					await update({ reset: kind === 'link' });
+				} finally {
+					busy = null;
+				}
 			};
 		};
 	}

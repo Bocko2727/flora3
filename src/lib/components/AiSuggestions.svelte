@@ -12,11 +12,16 @@
 		pickedIndex: number | null;
 		/** Replaces the built-in retry when the parent has to rebuild `sources` first. */
 		onretry?: () => void;
+		/** True while a request is running (bind it to lock the parent's own trigger). */
+		busy?: boolean;
 	};
-	let { sources, runKey, onpick, onresult, pickedIndex, onretry }: Props = $props();
+	let { sources, runKey, onpick, onresult, pickedIndex, onretry, busy = $bindable(false) }: Props = $props();
 
 	type State = 'idle' | 'loading' | 'ok' | 'error';
 	let phase = $state<State>('idle');
+	$effect(() => {
+		busy = phase === 'loading';
+	});
 	let candidates = $state<Candidate[]>([]);
 	let errorCode = $state<string | null>(null);
 	let errorMessage = $state('');

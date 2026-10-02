@@ -267,6 +267,26 @@ test('AI suggestions can be requested from the saved photos when editing', async
 	await logout(page);
 });
 
+test('identify button stays locked while AI is thinking', async ({ page }) => {
+	let calls = 0;
+	await page.route(IDENTIFY_URL, async (route) => {
+		calls += 1;
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		await route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, `${aiPlantUrl}/edit`);
+	const button = page.getByRole('button', { name: /Разпознай по снимките|Зареждане на снимките/ });
+	await button.click();
+	await expect(page.getByText('Разпознаване…')).toBeVisible({ timeout: 30_000 });
+	await expect(button).toBeDisabled();
+	await button.click({ force: true });
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await expect(button).toBeEnabled();
+	expect(calls).toBe(1);
+	await logout(page);
+});
+
 test('a missing AI configuration is explained and the plant still saves', async ({ page }) => {
 	await page.route(IDENTIFY_URL, (route) =>
 		route.fulfill({
