@@ -22,9 +22,14 @@ export async function findPhotoBySha(db: Db, sha256: string): Promise<{ id: stri
 	return data;
 }
 
-async function rowReferences(db: Db, path: string): Promise<boolean> {
-	const { data } = await db.from('plant_photos').select('id').eq('path', path).maybeSingle();
-	return data !== null;
+async function rowReferences(db: Db, path: string): Promise<{ referenced: boolean; error: unknown }> {
+	const { data, error } = await db.from('plant_photos').select('id').eq('path', path).maybeSingle();
+	return { referenced: data !== null, error };
+}
+
+async function removeFiles(db: Db, paths: string[]): Promise<void> {
+	const { error } = await db.storage.from(BUCKET).remove(paths);
+	if (error) console.error('Possibly orphaned photo files:', paths, error);
 }
 
 export async function savePhoto(
@@ -35,7 +40,9 @@ export async function savePhoto(
 	if (await findPhotoBySha(db, photo.sha256)) throw new UserFacingError(DUPLICATE);
 
 	const { path, thumbPath } = photoPaths(ownerId, plantId, photoId, photo.mime);
-	if (await rowReferences(db, path)) throw new UserFacingError(DUPLICATE);
+	const existing = await rowReferences(db, path);
+	if (existing.error) throw new UserFacingError('Снимката не можа да се провери.', existing.error);
+	if (existing.referenced) throw new UserFacingError(DUPLICATE);
 
 	const bucket = db.storage.from(BUCKET);
 	const options = { contentType: photo.mime, upsert: true, cacheControl: '31536000' };
@@ -45,7 +52,7 @@ export async function savePhoto(
 
 	const thumbUpload = await bucket.upload(thumbPath, photo.thumb, options);
 	if (thumbUpload.error) {
-		await bucket.remove([path]);
+		await removeFiles(db, [path]);
 		throw new UserFacingError('Снимката не можа да се качи.', thumbUpload.error);
 	}
 
@@ -67,7 +74,9 @@ export async function savePhoto(
 		.single();
 
 	if (error) {
-		if (!(await rowReferences(db, path))) await bucket.remove([path, thumbPath]);
+		const after = await rowReferences(db, path);
+		if (after.error) console.error('Possibly orphaned photo files:', [path, thumbPath], after.error);
+		else if (!after.referenced) await removeFiles(db, [path, thumbPath]);
 		if (error.code === '23505') throw new UserFacingError(DUPLICATE, error);
 		throw new UserFacingError(describeDbError(error, 'Снимката не можа да се запише.'), error);
 	}
@@ -75,11 +84,11 @@ export async function savePhoto(
 }
 
 export async function deletePhoto(db: Db, photo: { id: string; path: string; thumb_path: string }): Promise<void> {
-	const { data, error } = await db.from('plant_photos').delete().eq('id', photo.id).select('id');
+	const { data, error } = await db.from('plant_photos').delete().eq('id', photo.id).select('id, path, thumb_path');
 	if (error) throw new UserFacingError(describeDbError(error, 'Снимката не можа да се изтрие.'), error);
 	if (data.length === 0) throw new UserFacingError('Снимката не е намерена или нямаш права да я изтриеш.');
-	const { error: removeError } = await db.storage.from(BUCKET).remove([photo.path, photo.thumb_path]);
-	if (removeError) console.error('Orphaned photo files after deleting', photo.id, removeError);
+	const { path, thumb_path } = data[0];
+	await removeFiles(db, [path, thumb_path]);
 }
 
 export async function setPrimaryPhoto(db: Db, photoId: string): Promise<void> {

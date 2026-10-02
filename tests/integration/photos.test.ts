@@ -112,4 +112,25 @@ describe('photo storage', () => {
 		expect(data?.length).toBe(1);
 		expect(await objectCount(`${editorId}/${plantId}`)).toBe(2);
 	});
+
+	it('signPaths returns only the paths that exist', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#666666', '2') });
+		const missing = `${editorId}/${plantId}/${randomUUID()}.webp`;
+		const urls = await signPaths(editor, [row.path, missing]);
+		expect([...urls.keys()]).toEqual([row.path]);
+	});
+
+	it('deletePhoto removes the files of the row it deleted, not the paths passed in', async () => {
+		const first = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#777777', '3') });
+		const second = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#888888', '4') });
+
+		await deletePhoto(editor, { id: second.id, path: first.path, thumb_path: first.thumb_path });
+
+		const { data } = await editor.from('plant_photos').select('id').eq('plant_id', plantId);
+		expect(data?.map((r) => r.id)).toEqual([first.id]);
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(2);
+		const urls = await signPaths(editor, [first.path, second.path]);
+		expect([...urls.keys()]).toEqual([first.path]);
+		expect((await fetch(urls.get(first.path)!)).status).toBe(200);
+	});
 });

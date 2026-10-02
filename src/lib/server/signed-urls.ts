@@ -13,5 +13,7 @@ export async function signPaths(db: SupabaseClient<Database>, paths: string[]): 
 	for (const item of data) {
 		if (item.path && item.signedUrl && !item.error) urls.set(item.path, item.signedUrl);
 	}
+	const missing = unique.filter((path) => !urls.has(path));
+	if (missing.length > 0) console.error('No signed URL for photo paths:', missing);
 	return urls;
 }
