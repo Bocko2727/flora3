@@ -1,0 +1,68 @@
+# TEMPORARY: one-off legacy import into flora3. Remove this file after the import.
+name: Legacy import (one-off)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run or apply'
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, apply]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Old project: read-only access with its public (publishable) key.
+      OLD_REST_URL: https://sxuxtsbyqjaodyuqebux.supabase.co/rest/v1/plants
+      OLD_PUBLISHABLE_KEY: sb_publishable_Sdl2sYCMBSeAeW7tEpudKQ_zg0WfdUA
+      NEW_SUPABASE_URL: https://lfmkjxcaokndltdylama.supabase.co
+      OWNER_USER_ID: 5135dc97-a09c-47b0-a7fc-4f5a6fd20912
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export the legacy catalog (read-only)
+        run: |
+          curl -fsS -G "$OLD_REST_URL" \
+            --data-urlencode 'select=id,common_name,latin_name,family,photos,confidence,recognition,habitat,lookalikes,benefits,risks,uses,fun_fact,source_file' \
+            --data-urlencode 'order=created_at,id' \
+            -H "apikey: $OLD_PUBLISHABLE_KEY" -H "Authorization: Bearer $OLD_PUBLISHABLE_KEY" \
+            | jq 'map(.confidence |= (if . == null then null else tostring end))' > legacy-export.json
+          plants=$(jq length legacy-export.json)
+          photos=$(jq '[.[].photos // [] | length] | add' legacy-export.json)
+          echo "Exported $plants plants, $photos photo references"
+          test "$plants" = 98 && test "$photos" = 120 || { echo "Unexpected export size"; exit 1; }
+
+      - name: Import (${{ inputs.mode }})
+        env:
+          NEW_SUPABASE_SECRET_KEY: ${{ secrets.NEW_SUPABASE_SECRET_KEY }}
+        run: |
+          test -n "$NEW_SUPABASE_SECRET_KEY" || { echo "Secret NEW_SUPABASE_SECRET_KEY is not set"; exit 1; }
+          args="--source legacy-export.json --overrides scripts/import/overrides.flora3.json --report import-report.json"
+          if [ "${{ inputs.mode }}" = apply ]; then args="$args --apply"; fi
+          npm run import:legacy -- $args
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: import-report-${{ inputs.mode }}
+          path: import-report.json
+          retention-days: 7
+          if-no-files-found: ignore
