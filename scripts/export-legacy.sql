@@ -8,7 +8,7 @@ select coalesce(
       'latin_name', latin_name,
       'family', family,
       'photos', photos,
-      'confidence', confidence,
+      'confidence', confidence::text,
       'recognition', recognition,
       'habitat', habitat,
       'lookalikes', lookalikes,
