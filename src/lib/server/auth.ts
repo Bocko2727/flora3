@@ -6,7 +6,7 @@ export async function isEditor(db: SupabaseClient<Database>): Promise<boolean> {
 	const { data, error: rpcError } = await db.rpc('is_editor');
 	if (rpcError) {
 		console.error('is_editor failed', rpcError);
-		return false;
+		error(503, 'Не успяхме да проверим правата ти. Опитай пак.');
 	}
 	return data === true;
 }

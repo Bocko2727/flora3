@@ -25,4 +25,17 @@ describe('safeNext', () => {
 		expect(safeNext('//evil.example')).toBe('/');
 		expect(safeNext('/\\evil.example')).toBe('/');
 	});
+	it('rejects targets that browsers normalise into protocol-relative URLs', () => {
+		expect(safeNext('/\t/evil.example')).toBe('/');
+		expect(safeNext('/\t\\evil.example')).toBe('/');
+		expect(safeNext('/\n/evil.example')).toBe('/');
+		expect(safeNext('/\r/evil.example')).toBe('/');
+	});
+	it('never sends the user back to /logout', () => {
+		expect(safeNext('/logout')).toBe('/');
+		expect(safeNext('/logout?x=1')).toBe('/');
+	});
+	it('keeps query and hash intact', () => {
+		expect(safeNext('/plants/abc?x=1#y')).toBe('/plants/abc?x=1#y');
+	});
 });

@@ -1,4 +1,4 @@
-import { redirect, type Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
 import { env } from '$env/dynamic/public';
 import { isPublicPath } from '$lib/auth/guard';
 import { parsePublicEnv } from '$lib/env';
@@ -8,7 +8,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const publicEnv = parsePublicEnv(env);
 	event.locals.supabase = createSupabaseServerClient(event, publicEnv);
 
-	const { data } = await event.locals.supabase.auth.getUser();
+	const { data, error: authError } = await event.locals.supabase.auth.getUser();
+	if (
+		authError &&
+		authError.name !== 'AuthSessionMissingError' &&
+		(authError.status === undefined || authError.status >= 500)
+	) {
+		console.error('auth.getUser failed', authError);
+		error(503, 'Услугата за вход не отговаря. Опитай пак след малко.');
+	}
 	event.locals.user = data.user ?? null;
 
 	if (!event.locals.user && !isPublicPath(event.url.pathname)) {
@@ -17,4 +25,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	return resolve(event);
+};
+
+export const handleError: HandleServerError = ({ error: err, event, status }) => {
+	console.error(`Unhandled error (${status}) on ${event.url.pathname}`, err);
+	return { message: 'Възникна неочаквана грешка.' };
 };

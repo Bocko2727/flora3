@@ -5,8 +5,12 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 export function safeNext(next: string | null): string {
-	if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+	if (!next || !next.startsWith('/') || /[\\\u0000-\u001f\u007f]/.test(next)) return '/';
+	try {
+		const url = new URL(next, 'http://flora.invalid');
+		if (url.origin !== 'http://flora.invalid' || url.pathname === '/logout') return '/';
+		return url.pathname + url.search + url.hash;
+	} catch {
 		return '/';
 	}
-	return next;
 }

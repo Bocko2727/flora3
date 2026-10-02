@@ -7,6 +7,7 @@
 	--accent-contrast: #ffffff;
 	--border: #dcdfd3;
 	--danger: #a12d2d;
+	--danger-contrast: #ffffff;
 	--warn-bg: #fff4d6;
 	--warn-text: #6b4e00;
 	--radius: 12px;
@@ -24,6 +25,7 @@
 		--accent-contrast: #0f1a11;
 		--border: #2c3a2f;
 		--danger: #ff8a80;
+		--danger-contrast: #1a0d0d;
 		--warn-bg: #3a3112;
 		--warn-text: #f4dc8f;
 	}
@@ -85,14 +87,16 @@ button {
 .button.primary,
 button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .button.danger,
-button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+button.danger { background: var(--danger); color: var(--danger-contrast); border-color: var(--danger); }
 button:disabled { opacity: 0.6; cursor: progress; }
 .link-button { border: none; background: none; color: var(--accent); padding: 0.25rem; min-height: 44px; text-decoration: underline; }
 
 .field { display: flex; flex-direction: column; gap: 0.25rem; }
 .field label { font-weight: 600; }
 .field-error { color: var(--danger); font-size: 0.875rem; margin: 0; }
-input, textarea, select {
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
+textarea,
+select {
 	font: inherit;
 	width: 100%;
 	padding: 0.6rem 0.75rem;
