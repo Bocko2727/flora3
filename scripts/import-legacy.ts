@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../src/lib/database.types';
-import { emptyReport, importLegacy } from './import/run';
+import { emptyReport, importLegacy, verifyOwner } from './import/run';
 
 const { values } = parseArgs({
 	options: {
@@ -54,7 +54,15 @@ const db = createClient<Database>(env.NEW_SUPABASE_URL, env.NEW_SUPABASE_SECRET_
 	auth: { persistSession: false, autoRefreshToken: false }
 });
 
+let owner: { email: string };
+try {
+	owner = await verifyOwner(db, env.OWNER_USER_ID);
+} catch (e) {
+	console.error(e instanceof Error ? e.message : String(e));
+	process.exit(2);
+}
 console.log(`Target: ${new URL(env.NEW_SUPABASE_URL).host}`);
+console.log(`Owner: ${owner.email}`);
 console.log(values.apply ? 'APPLY mode: writing to the new project.' : 'DRY-RUN: nothing will be written.');
 const report = emptyReport(values.apply);
 try {

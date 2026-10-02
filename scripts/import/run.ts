@@ -44,6 +44,18 @@ export type ImportReport = {
 	plantsWithoutPhotos: string[];
 };
 
+const OWNER_ERROR = 'OWNER_USER_ID is not an editor in the target project. Use the owner\'s UID (the user in public.editors).';
+
+/** Confirms the owner id belongs to an editor of the target project and returns the owner's email. */
+export async function verifyOwner(db: SupabaseClient<Database>, ownerId: string): Promise<{ email: string }> {
+	const editor = await db.from('editors').select('user_id').eq('user_id', ownerId).maybeSingle();
+	if (editor.error) throw new Error(`Could not check editors: ${message(editor.error)}`);
+	if (!editor.data) throw new Error(OWNER_ERROR);
+	const user = await db.auth.admin.getUserById(ownerId);
+	if (user.error || !user.data.user) throw new Error(OWNER_ERROR);
+	return { email: user.data.user.email ?? '(no email)' };
+}
+
 export function emptyReport(apply: boolean): ImportReport {
 	return {
 		apply,

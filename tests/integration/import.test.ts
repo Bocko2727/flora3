@@ -2,8 +2,8 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { importLegacy } from '../../scripts/import/run';
-import { EDITOR, adminClient, ensureUser, resetCatalog } from '../helpers/supabase';
+import { importLegacy, verifyOwner } from '../../scripts/import/run';
+import { EDITOR, VIEWER, adminClient, ensureUser, resetCatalog } from '../helpers/supabase';
 
 let server: Server;
 let baseUrl: string;
@@ -46,6 +46,17 @@ function records() {
 		{ id: 'aaaaaaaa-0000-4000-8000-000000000003', common_name: 'Без латинско' }
 	];
 }
+
+describe('verifyOwner', () => {
+	it('accepts an editor and returns the email', async () => {
+		await expect(verifyOwner(adminClient(), ownerId)).resolves.toEqual({ email: EDITOR.email });
+	});
+
+	it('rejects a user who is not an editor', async () => {
+		const viewerId = await ensureUser(VIEWER, { editor: false });
+		await expect(verifyOwner(adminClient(), viewerId)).rejects.toThrow('OWNER_USER_ID is not an editor in the target project');
+	});
+});
 
 describe('importLegacy', () => {
 	it('dry-run validates everything and writes nothing', async () => {
