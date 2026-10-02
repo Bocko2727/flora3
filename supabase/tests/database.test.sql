@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(50);
 
 insert into auth.users (id, email, aud, role, instance_id) values
   ('11111111-1111-1111-1111-111111111111', 'editor@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
@@ -8,6 +8,9 @@ insert into auth.users (id, email, aud, role, instance_id) values
 insert into public.editors (user_id) values ('11111111-1111-1111-1111-111111111111');
 
 select is((select public from storage.buckets where id = 'photos'), false, 'photos bucket is private');
+
+select is(has_table_privilege('authenticated', 'public.plants', 'select'), true, 'authenticated has an explicit select grant on plants');
+select is(has_table_privilege('authenticated', 'public.plants', 'truncate'), false, 'authenticated cannot truncate plants');
 
 set local role authenticated;
 
