@@ -11,7 +11,7 @@ export const legacyPlantSchema = z.object({
 	common_name: z.string().trim().min(1).max(200),
 	latin_name: z.string().trim().min(1).max(200),
 	family: z.string().trim().max(100).nullable().optional(),
-	photos: z.array(z.string()).default([]),
+	photos: z.array(z.string()).nullish().transform((v) => v ?? []),
 	confidence: optional,
 	recognition: optional,
 	habitat: optional,

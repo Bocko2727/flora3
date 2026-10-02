@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../src/lib/database.types';
-import { importLegacy } from './import/run';
+import { emptyReport, importLegacy } from './import/run';
 
 const { values } = parseArgs({
 	options: {
@@ -33,7 +33,13 @@ if (!envResult.success) {
 }
 const env = envResult.data;
 
-const parsed: unknown = JSON.parse(readFileSync(values.source, 'utf8'));
+let parsed: unknown;
+try {
+	parsed = JSON.parse(readFileSync(values.source, 'utf8'));
+} catch (e) {
+	console.error(`Cannot read ${values.source} as JSON: ${e instanceof Error ? e.message : String(e)}`);
+	process.exit(2);
+}
 const records = Array.isArray(parsed)
 	? parsed
 	: typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { plants?: unknown }).plants)
@@ -48,9 +54,32 @@ const db = createClient<Database>(env.NEW_SUPABASE_URL, env.NEW_SUPABASE_SECRET_
 	auth: { persistSession: false, autoRefreshToken: false }
 });
 
+console.log(`Target: ${new URL(env.NEW_SUPABASE_URL).host}`);
 console.log(values.apply ? 'APPLY mode: writing to the new project.' : 'DRY-RUN: nothing will be written.');
-const report = await importLegacy({ records, db, ownerId: env.OWNER_USER_ID, apply: values.apply, log: console.log });
+const report = emptyReport(values.apply);
+try {
+	await importLegacy({ records, db, ownerId: env.OWNER_USER_ID, apply: values.apply, log: console.log, report });
+} catch (e) {
+	// Keep what was done so far, then fail loudly.
+	report.errors.push({ plantId: null, message: `Aborted: ${e instanceof Error ? e.message : String(e)}` });
+	writeFileSync(values.report, JSON.stringify(report, null, 2));
+	console.error(`Import aborted; partial report: ${values.report}`);
+	throw e;
+}
 writeFileSync(values.report, JSON.stringify(report, null, 2));
-console.log(JSON.stringify({ plants: report.plants, photos: report.photos, errors: report.errors.length }, null, 2));
+const duplicates = report.skipped.filter((s) => s.reason === 'duplicate-of-other-plant');
+console.log(
+	JSON.stringify(
+		{
+			plants: report.plants,
+			photos: report.photos,
+			errors: report.errors.length,
+			plantsWithoutPhotos: report.plantsWithoutPhotos,
+			duplicatesOfOtherPlants: duplicates.map((d) => ({ plantId: d.plantId, existingPlantId: d.existingPlantId, url: d.url }))
+		},
+		null,
+		2
+	)
+);
 console.log(`Full report: ${values.report}`);
-process.exit(report.errors.length > 0 ? 1 : 0);
+process.exit(report.errors.length > 0 || report.plantsWithoutPhotos.length > 0 || duplicates.length > 0 ? 1 : 0);

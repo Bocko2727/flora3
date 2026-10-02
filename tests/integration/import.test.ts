@@ -14,6 +14,7 @@ beforeAll(async () => {
 	ownerId = await ensureUser(EDITOR, { editor: true });
 	images.set('/a.jpg', await sharp({ create: { width: 3200, height: 2400, channels: 3, background: '#2f6b3a' } }).jpeg().toBuffer());
 	images.set('/b.jpg', await sharp({ create: { width: 800, height: 600, channels: 3, background: '#c9a227' } }).jpeg().toBuffer());
+	images.set('/a-copy.jpg', images.get('/a.jpg')!);
 	images.set(
 		'/rotated.jpg',
 		await sharp({ create: { width: 400, height: 300, channels: 3, background: '#7a3f8c' } }).jpeg().withMetadata({ orientation: 6 }).toBuffer()
@@ -52,8 +53,19 @@ describe('importLegacy', () => {
 		expect(report.apply).toBe(false);
 		expect(report.plants).toEqual({ total: 2, created: 2, skippedExisting: 0, failed: 1 });
 		expect(report.photos).toEqual({ total: 4, created: 3, skippedDuplicate: 0, failed: 1 });
-		const { count } = await adminClient().from('plants').select('*', { count: 'exact', head: true });
+		expect(report.plantsWithoutPhotos).toEqual([]);
+		expect(report.outcomes).toEqual([
+			{ plantId: 'aaaaaaaa-0000-4000-8000-000000000001', name: 'Лайка', status: 'created', photosCreated: 2, photosSkipped: 0, photosFailed: 0 },
+			{ plantId: 'aaaaaaaa-0000-4000-8000-000000000002', name: 'Мащерка', status: 'created', photosCreated: 1, photosSkipped: 0, photosFailed: 1 }
+		]);
+		const admin = adminClient();
+		const { count } = await admin.from('plants').select('*', { count: 'exact', head: true });
 		expect(count).toBe(0);
+		const photoRows = await admin.from('plant_photos').select('*', { count: 'exact', head: true });
+		expect(photoRows.count).toBe(0);
+		const objects = await admin.storage.from('photos').list('');
+		expect(objects.error).toBeNull();
+		expect(objects.data).toEqual([]);
 	});
 
 	it('imports plants and photos, then a second run changes nothing', async () => {
@@ -61,6 +73,13 @@ describe('importLegacy', () => {
 		expect(first.plants).toEqual({ total: 2, created: 2, skippedExisting: 0, failed: 1 });
 		expect(first.photos).toEqual({ total: 4, created: 3, skippedDuplicate: 0, failed: 1 });
 		expect(first.errors.map((e) => e.plantId)).toEqual(['aaaaaaaa-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000003']);
+
+		expect(first.outcomes).toEqual([
+			{ plantId: 'aaaaaaaa-0000-4000-8000-000000000001', name: 'Лайка', status: 'created', photosCreated: 2, photosSkipped: 0, photosFailed: 0 },
+			{ plantId: 'aaaaaaaa-0000-4000-8000-000000000002', name: 'Мащерка', status: 'created', photosCreated: 1, photosSkipped: 0, photosFailed: 1 }
+		]);
+		expect(first.plantsWithoutPhotos).toEqual([]);
+		expect(first.skipped).toEqual([]);
 
 		const admin = adminClient();
 		const { data: plant } = await admin.from('plants').select('*').eq('id', 'aaaaaaaa-0000-4000-8000-000000000001').single();
@@ -86,7 +105,51 @@ describe('importLegacy', () => {
 		const second = await importLegacy({ records: records(), db: admin, ownerId, apply: true });
 		expect(second.plants).toEqual({ total: 2, created: 0, skippedExisting: 2, failed: 1 });
 		expect(second.photos).toEqual({ total: 4, created: 0, skippedDuplicate: 3, failed: 1 });
+		expect(second.skipped.map((x) => [x.plantId, x.reason, x.existingPlantId])).toEqual([
+			['aaaaaaaa-0000-4000-8000-000000000001', 'already-imported', 'aaaaaaaa-0000-4000-8000-000000000001'],
+			['aaaaaaaa-0000-4000-8000-000000000001', 'already-imported', 'aaaaaaaa-0000-4000-8000-000000000001'],
+			['aaaaaaaa-0000-4000-8000-000000000002', 'already-imported', 'aaaaaaaa-0000-4000-8000-000000000002']
+		]);
+		expect(second.outcomes.map((o) => [o.status, o.photosCreated, o.photosSkipped, o.photosFailed])).toEqual([
+			['skippedExisting', 0, 2, 0],
+			['skippedExisting', 0, 1, 1]
+		]);
+		expect(second.plantsWithoutPhotos).toEqual([]);
 		const { count } = await admin.from('plant_photos').select('*', { count: 'exact', head: true });
 		expect(count).toBe(3);
+	});
+
+	it('reports a plant left without photos when another plant already holds identical bytes', async () => {
+		const twins = [
+			{ id: 'aaaaaaaa-0000-4000-8000-000000000001', common_name: 'Първа', latin_name: 'Prima plantae', photos: [`${baseUrl}/a.jpg`] },
+			{ id: 'aaaaaaaa-0000-4000-8000-000000000002', common_name: 'Втора', latin_name: 'Secunda plantae', photos: [`${baseUrl}/a-copy.jpg`] }
+		];
+		const report = await importLegacy({ records: twins, db: adminClient(), ownerId, apply: true });
+		expect(report.photos).toEqual({ total: 2, created: 1, skippedDuplicate: 1, failed: 0 });
+		expect(report.skipped).toHaveLength(1);
+		expect(report.skipped[0]).toMatchObject({
+			plantId: 'aaaaaaaa-0000-4000-8000-000000000002',
+			url: `${baseUrl}/a-copy.jpg`,
+			reason: 'duplicate-of-other-plant',
+			existingPlantId: 'aaaaaaaa-0000-4000-8000-000000000001'
+		});
+		expect(report.skipped[0].sha256).toMatch(/^[0-9a-f]{64}$/);
+		expect(report.plantsWithoutPhotos).toEqual(['aaaaaaaa-0000-4000-8000-000000000002']);
+		expect(report.errors).toEqual([]);
+	});
+
+	it('counts the photos of a plant that could not be inserted as failed', async () => {
+		// An owner id that does not exist violates the foreign key, so the plant insert is refused.
+		const report = await importLegacy({
+			records: [{ id: 'aaaaaaaa-0000-4000-8000-000000000004', common_name: 'Невъзможна', latin_name: 'Thymus', photos: [`${baseUrl}/b.jpg`] }],
+			db: adminClient(),
+			ownerId: '99999999-9999-4999-8999-999999999999',
+			apply: true
+		});
+		expect(report.plants).toEqual({ total: 1, created: 0, skippedExisting: 0, failed: 1 });
+		expect(report.photos).toEqual({ total: 1, created: 0, skippedDuplicate: 0, failed: 1 });
+		expect(report.errors.map((e) => e.message)).toContain('plant not imported');
+		expect(report.outcomes[0]).toMatchObject({ status: 'failed', photosFailed: 1 });
+		expect(report.plantsWithoutPhotos).toEqual([]);
 	});
 });
