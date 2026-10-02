@@ -53,7 +53,9 @@ export async function findWiki(gbifKey: number, fetchFn: typeof fetch = fetch): 
 			format: 'json'
 		})}`;
 		const entity = obj(obj(obj(await getJson(entityUrl, fetchFn))?.entities)?.[qid]);
-		const name_bg = str(obj(obj(entity?.labels)?.bg)?.value);
+		const label = str(obj(obj(entity?.labels)?.bg)?.value);
+		// Wikidata often copies the Latin name into the bg label; that is not a Bulgarian name.
+		const name_bg = label && /[\u0400-\u04FF]/.test(label) ? label : null;
 		const title = str(obj(obj(entity?.sitelinks)?.bgwiki)?.title);
 		if (!title) return { name_bg, extract: null, url: null, title: null };
 

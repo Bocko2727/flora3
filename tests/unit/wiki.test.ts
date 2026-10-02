@@ -59,6 +59,12 @@ describe('findWiki', () => {
 		expect(await findWiki(3117813, fetchFn)).toMatchObject({ name_bg: 'Паричка', title: 'Паричка', extract: null });
 	});
 
+	it('ignores a Bulgarian label that is only the Latin name', async () => {
+		const latin = { entities: { Q158244: { labels: { bg: { value: 'Cistus creticus' } }, sitelinks: {} } } };
+		const { fetchFn } = stub({ entity: json(latin) });
+		expect(await findWiki(6438085, fetchFn)).toEqual({ name_bg: null, title: null, url: null, extract: null });
+	});
+
 	it('returns null when the network fails', async () => {
 		const fetchFn = (async () => {
 			throw new Error('offline');
