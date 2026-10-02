@@ -3,6 +3,7 @@ import type { Database } from '$lib/database.types';
 import { UserFacingError, describeDbError } from '$lib/errors';
 import type { PlantFormData } from '$lib/schemas/plant';
 import { isIdStatus, type IdStatus, type NameSource } from '$lib/status';
+import type { Candidate } from '$lib/identify/types';
 import type { PhotoRow, PlantRow } from '$lib/types';
 
 export type Db = SupabaseClient<Database>;
@@ -10,7 +11,17 @@ export type PlantListItem = Pick<PlantRow, 'id' | 'scientific_name' | 'name_bg' 
 	id_status: IdStatus;
 	primaryThumbPath: string | null;
 };
-export type PlantWithPhotos = PlantRow & { id_status: IdStatus; photos: PhotoRow[] };
+export type LatestIdentification = {
+	created_at: string;
+	model_version: string | null;
+	candidates: Candidate[];
+	chosen_index: number | null;
+};
+export type PlantWithPhotos = PlantRow & {
+	id_status: IdStatus;
+	photos: PhotoRow[];
+	latestIdentification: LatestIdentification | null;
+};
 
 const NOT_FOUND_OR_FORBIDDEN = 'Растението не е намерено или нямаш права да го променяш.';
 
@@ -43,7 +54,28 @@ export async function getPlant(db: Db, id: string): Promise<PlantWithPhotos | nu
 	}
 	if (!data) return null;
 	const { plant_photos, id_status, ...plant } = data;
-	return { ...plant, id_status: isIdStatus(id_status) ? id_status : 'draft', photos: plant_photos };
+	const latest = await db
+		.from('identifications')
+		.select('created_at, model_version, candidates, chosen_index')
+		.eq('plant_id', id)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (latest.error) throw new UserFacingError('Растението не можа да се зареди.', latest.error);
+	return {
+		...plant,
+		id_status: isIdStatus(id_status) ? id_status : 'draft',
+		photos: plant_photos,
+		latestIdentification: latest.data
+			? {
+					created_at: latest.data.created_at,
+					model_version: latest.data.model_version,
+					// Written only by this app through identificationSchema, so the shape is trusted.
+					candidates: (Array.isArray(latest.data.candidates) ? latest.data.candidates : []) as Candidate[],
+					chosen_index: latest.data.chosen_index
+				}
+			: null
+	};
 }
 
 export async function createPlant(

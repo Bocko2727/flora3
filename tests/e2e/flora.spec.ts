@@ -142,12 +142,28 @@ test('editor edits the plant, changes the primary photo and sees the draft statu
 	await expect(page.getByText('Няма растения, които отговарят на търсенето.')).toBeVisible();
 });
 
+test('editor sees the evidence panel with name check and iNaturalist link', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, plantUrl);
+	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
+	await expect(page.getByText('Името не е проверено в GBIF.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toBeVisible();
+	await expect(page.getByLabel('Линк към наблюдение в iNaturalist')).toBeVisible();
+	// e2e runs with FLORA_OFFLINE_EXTERNAL=1, so GBIF is unreachable and the failure is reported without writing.
+	await page.getByRole('button', { name: 'Провери името в GBIF' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Името не можа да се провери в GBIF.');
+	await logout(page);
+});
+
 test('viewer can read but cannot change anything', async ({ page }) => {
 	await login(page, VIEWER);
 	await expect(page.getByRole('link', { name: '+ Растение' })).toHaveCount(0);
 	await page.getByRole('link', { name: /Обикновена паричка/ }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toHaveCount(0);
+	await expect(page.getByLabel('Линк към наблюдение в iNaturalist')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /Потвърди|Върни като непотвърдено/ })).toHaveCount(0);
 	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 

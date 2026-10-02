@@ -1,10 +1,11 @@
 <script lang="ts">
+	import Evidence from '$lib/components/Evidence.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import LegacyAiPanel from '$lib/components/LegacyAiPanel.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { PageProps } from './$types';
 
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 	const plant = $derived(data.plant);
 </script>
 
@@ -41,6 +42,8 @@
 		</section>
 	{/if}
 {/each}
+
+<Evidence plant={plant} latest={data.latest} isEditor={data.isEditor} message={form?.message} />
 
 <LegacyAiPanel legacy={data.legacy} />
 
