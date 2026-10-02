@@ -41,8 +41,10 @@ export async function sha256Hex(data: ArrayBuffer): Promise<string> {
 	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** Null for non-dates, invalid dates and implausible years (exifr turns an all-zero EXIF date into 1899-11-30). */
 export function toIsoDate(value: unknown): string | null {
-	return value instanceof Date && !Number.isNaN(value.getTime()) ? value.toISOString() : null;
+	if (!(value instanceof Date) || Number.isNaN(value.getTime())) return null;
+	return value.getUTCFullYear() < 1900 ? null : value.toISOString();
 }
 
 const canvasToBlob: BlobEncoder = (canvas, type, quality) =>
@@ -93,25 +95,53 @@ function drawScaled(bitmap: ImageBitmap, size: { width: number; height: number }
 	return canvas;
 }
 
+/** Drops the canvas backing store right away instead of waiting for garbage collection (matters on iOS Safari). */
+function releaseCanvas(canvas: HTMLCanvasElement): void {
+	canvas.width = 0;
+	canvas.height = 0;
+}
+
+const UNSUPPORTED_FORMAT = 'Форматът не се поддържа от този браузър. Изберете JPEG.';
+
+/**
+ * Decodes with EXIF orientation applied. Engines that reject the `imageOrientation` option throw a TypeError;
+ * only then is the decode retried once without options. Any other failure means the format is unsupported.
+ */
+export async function decodeBitmap(
+	file: Blob,
+	create: typeof createImageBitmap = createImageBitmap
+): Promise<ImageBitmap> {
+	try {
+		try {
+			return await create(file, { imageOrientation: 'from-image' });
+		} catch (error) {
+			if (!(error instanceof TypeError)) throw error;
+			return await create(file);
+		}
+	} catch {
+		throw new UserFacingError(UNSUPPORTED_FORMAT);
+	}
+}
+
 /** Browser only. Hashes the original, reads the capture date, re-encodes full + thumb without metadata. */
 export async function processImage(file: File): Promise<ProcessedPhoto> {
 	const buffer = await file.arrayBuffer();
 	const sha256 = await sha256Hex(buffer);
 	const takenAt = await readTakenAt(buffer);
 
-	let bitmap: ImageBitmap;
-	try {
-		bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-	} catch {
-		throw new UserFacingError('Форматът не се поддържа от този браузър. Изберете JPEG.');
-	}
-
+	const bitmap = await decodeBitmap(file);
+	const canvases: HTMLCanvasElement[] = [];
 	try {
 		const fullSize = fitWithin(bitmap.width, bitmap.height, FULL_MAX);
-		const full = await encodeCanvas(drawScaled(bitmap, fullSize));
-		const thumb = await encodeAs(drawScaled(bitmap, fitWithin(bitmap.width, bitmap.height, THUMB_MAX)), full.mime);
+		const fullCanvas = drawScaled(bitmap, fullSize);
+		canvases.push(fullCanvas);
+		const full = await encodeCanvas(fullCanvas);
+		const thumbCanvas = drawScaled(bitmap, fitWithin(bitmap.width, bitmap.height, THUMB_MAX));
+		canvases.push(thumbCanvas);
+		const thumb = await encodeAs(thumbCanvas, full.mime);
 		return { full: full.blob, thumb, mime: full.mime, width: fullSize.width, height: fullSize.height, sha256, takenAt };
 	} finally {
+		for (const canvas of canvases) releaseCanvas(canvas);
 		bitmap.close();
 	}
 }

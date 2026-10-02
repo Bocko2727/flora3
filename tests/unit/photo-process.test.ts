@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { UserFacingError } from '$lib/errors';
 import {
 	MAX_INPUT_BYTES,
+	decodeBitmap,
 	encodeAs,
 	encodeCanvas,
 	fitWithin,
@@ -54,6 +55,7 @@ describe('toIsoDate', () => {
 	it('converts valid dates and rejects everything else', () => {
 		expect(toIsoDate(new Date('2024-05-01T10:00:00Z'))).toBe('2024-05-01T10:00:00.000Z');
 		expect(toIsoDate(new Date('nope'))).toBeNull();
+		expect(toIsoDate(new Date('1899-11-30T00:00:00Z'))).toBeNull();
 		expect(toIsoDate('2024-05-01')).toBeNull();
 		expect(toIsoDate(undefined)).toBeNull();
 	});
@@ -95,5 +97,50 @@ describe('encodeAs', () => {
 		await expect(encodeAs(canvas, 'image/webp', async () => blobOf('image/png'))).rejects.toBeInstanceOf(
 			UserFacingError
 		);
+	});
+});
+
+describe('decodeBitmap', () => {
+	const message = 'Форматът не се поддържа от този браузър. Изберете JPEG.';
+	const bitmap = { width: 1, height: 1 } as ImageBitmap;
+	const file = new Blob([new Uint8Array([1])], { type: 'image/jpeg' });
+	const fake = (...outcomes: Array<Error | ImageBitmap>) => {
+		const calls: unknown[][] = [];
+		const create = (async (...args: unknown[]) => {
+			calls.push(args);
+			const outcome = outcomes[calls.length - 1];
+			if (outcome instanceof Error) throw outcome;
+			return outcome;
+		}) as unknown as typeof createImageBitmap;
+		return { create, calls };
+	};
+
+	it('decodes with EXIF orientation when the engine accepts the option', async () => {
+		const { create, calls } = fake(bitmap);
+		expect(await decodeBitmap(file, create)).toBe(bitmap);
+		expect(calls).toEqual([[file, { imageOrientation: 'from-image' }]]);
+	});
+
+	it('retries without options when the engine rejects the option with a TypeError', async () => {
+		const { create, calls } = fake(new TypeError('bad option'), bitmap);
+		expect(await decodeBitmap(file, create)).toBe(bitmap);
+		expect(calls).toHaveLength(2);
+		expect(calls[1]).toEqual([file]);
+	});
+
+	it('does not retry other failures and reports an unsupported format', async () => {
+		const { create, calls } = fake(new Error('decode failed'));
+		const error = await decodeBitmap(file, create).catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(UserFacingError);
+		expect((error as UserFacingError).message).toBe(message);
+		expect(calls).toHaveLength(1);
+	});
+
+	it('reports an unsupported format when the retry also fails', async () => {
+		const { create, calls } = fake(new TypeError('bad option'), new Error('decode failed'));
+		const error = await decodeBitmap(file, create).catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(UserFacingError);
+		expect((error as UserFacingError).message).toBe(message);
+		expect(calls).toHaveLength(2);
 	});
 });
