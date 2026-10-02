@@ -9,6 +9,8 @@
 	let { data, form }: PageProps = $props();
 	let saving = $state(false);
 	let confirmDelete = $state(false);
+	let deleting = $state(false);
+	let lastAction = $state<'update' | 'delete' | null>(null);
 </script>
 
 <svelte:head><title>Редакция · {data.plant.name_bg} · Флора</title></svelte:head>
@@ -22,6 +24,7 @@
 	class="stack"
 	use:enhance={() => {
 		saving = true;
+		lastAction = 'update';
 		return async ({ update }) => {
 			await update({ reset: false });
 			saving = false;
@@ -29,7 +32,7 @@
 	}}
 >
 	<PlantForm initial={data.values} errors={form?.errors ?? {}} legacy={data.legacy} />
-	{#if form?.message}<p class="error" role="alert">{form.message}</p>{/if}
+	{#if form?.message && lastAction !== 'delete'}<p class="error" role="alert">{form.message}</p>{/if}
 	<div class="row">
 		<button type="submit" class="primary" disabled={saving}>{saving ? 'Записване…' : 'Запази'}</button>
 		<a class="button" href={`/plants/${data.plant.id}`}>Отказ</a>
@@ -44,14 +47,27 @@
 
 <section class="stack danger-zone">
 	<h2>Изтриване</h2>
+	{#if form?.message && lastAction === 'delete'}<p class="error" role="alert">{form.message}</p>{/if}
 	{#if !confirmDelete}
 		<button type="button" onclick={() => (confirmDelete = true)}>Изтрий растението</button>
 	{:else}
-		<form method="POST" action="?/delete" use:enhance class="stack">
+		<form
+			method="POST"
+			action="?/delete"
+			class="stack"
+			use:enhance={() => {
+				deleting = true;
+				lastAction = 'delete';
+				return async ({ update }) => {
+					await update();
+					deleting = false;
+				};
+			}}
+		>
 			<p>Сигурен ли си? Растението и всичките му снимки ще бъдат изтрити завинаги.</p>
 			<div class="row">
-				<button type="submit" class="danger">Да, изтрий завинаги</button>
-				<button type="button" onclick={() => (confirmDelete = false)}>Отказ</button>
+				<button type="submit" class="danger" disabled={deleting}>{deleting ? 'Изтриване…' : 'Да, изтрий завинаги'}</button>
+				<button type="button" disabled={deleting} onclick={() => (confirmDelete = false)}>Отказ</button>
 			</div>
 		</form>
 	{/if}

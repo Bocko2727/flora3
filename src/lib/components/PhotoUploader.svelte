@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { UserFacingError } from '$lib/errors';
 	import { MAX_FILES_PER_BATCH, processImage, validateInputFile } from '$lib/photos/process';
 	import { DUPLICATE_PHOTO_MESSAGE, savePhoto } from '$lib/photos/storage';
@@ -28,6 +28,11 @@
 	let items = $state<Item[]>([]);
 	let notice = $state('');
 	let running = false;
+	let destroyed = false;
+
+	onDestroy(() => {
+		destroyed = true;
+	});
 
 	function enqueue(files: File[]) {
 		notice = '';
@@ -51,6 +56,13 @@
 	}
 
 	async function uploadOne(item: Item) {
+		if (!ownerId || !plantId) {
+			console.error('PhotoUploader: missing ownerId or plantId', { ownerId, plantId });
+			item.status = 'error';
+			item.message = 'Липсва потребител. Влез отново.';
+			item.retryable = false;
+			return;
+		}
 		try {
 			item.status = 'processing';
 			item.message = '';
@@ -75,12 +87,13 @@
 		running = true;
 		try {
 			let next: Item | undefined;
-			while ((next = items.find((item) => item.status === 'waiting'))) {
+			while (!destroyed && (next = items.find((item) => item.status === 'waiting'))) {
 				await uploadOne(next);
 			}
 		} finally {
 			running = false;
 		}
+		if (destroyed) return;
 		onsettled?.({
 			done: items.filter((item) => item.status === 'done').length,
 			failed: items.filter((item) => item.status === 'error').length
@@ -133,6 +146,7 @@
 
 <style>
 	.picker { position: relative; overflow: hidden; }
+	.picker:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
 	.picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 	.queue { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 	.queue li {

@@ -28,12 +28,25 @@
 	const TARGET_LABEL: Record<TextTarget, string> = { description: 'Описание', habitat: 'Местообитание', notes: 'Бележки' };
 	const legacyFields = $derived(legacy ? LEGACY_AI_FIELDS.filter((field) => legacy[field]) : []);
 
+	const LEGACY_PREFIX = '[AI чернова — непроверено] ';
+	const TEXT_MAX = 5000;
+	let appended = $state<LegacyAiField[]>([]);
+	let overflowing = $state<LegacyAiField[]>([]);
+
 	function appendLegacy(field: LegacyAiField) {
 		const text = legacy?.[field];
-		if (!text) return;
+		if (!text || appended.includes(field)) return;
 		const key = TARGET[field];
 		const current = values[key].trim();
-		values[key] = current ? `${current}\n\n${text}` : text;
+		const block = `${LEGACY_PREFIX}${text}`;
+		const next = current ? `${current}\n\n${block}` : block;
+		if (next.length > TEXT_MAX) {
+			if (!overflowing.includes(field)) overflowing.push(field);
+			return;
+		}
+		overflowing = overflowing.filter((item) => item !== field);
+		values[key] = next;
+		appended.push(field);
 	}
 
 	const fields: { name: keyof PlantFormValues; label: string; max: number; multiline: boolean; required: boolean }[] = [
@@ -85,9 +98,12 @@
 				<div class="legacy-item">
 					<strong>{LEGACY_AI_LABELS[field]}</strong>
 					<p>{legacy?.[field]}</p>
-					<button type="button" onclick={() => appendLegacy(field)}>
-						Добави към {TARGET_LABEL[TARGET[field]]}
+					<button type="button" disabled={appended.includes(field)} onclick={() => appendLegacy(field)}>
+						{appended.includes(field) ? 'Добавено' : `Добави към ${TARGET_LABEL[TARGET[field]]}`}
 					</button>
+					{#if overflowing.includes(field)}
+						<p class="field-error" role="alert">Текстът ще надхвърли {TEXT_MAX} знака.</p>
+					{/if}
 				</div>
 			{/each}
 		</details>
