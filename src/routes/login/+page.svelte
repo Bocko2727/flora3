@@ -24,7 +24,7 @@
 	>
 		<div class="field">
 			<label for="email">Имейл</label>
-			<input id="email" name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
+			<input id="email" name="email" type="email" autocomplete="email" required defaultValue={form?.email ?? ''} />
 		</div>
 		<div class="field">
 			<label for="password">Парола</label>
