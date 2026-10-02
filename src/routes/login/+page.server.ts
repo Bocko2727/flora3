@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { safeNext } from '$lib/auth/guard';
+import { loginErrorMessage } from '$lib/auth/login-errors';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -16,14 +17,10 @@ export const actions: Actions = {
 		}
 		const { error } = await locals.supabase.auth.signInWithPassword({ email, password });
 		if (error) {
-			if (error.code === 'invalid_credentials' || error.status === 400) {
-				return fail(400, { email, message: 'Грешен имейл или парола.' });
-			}
-			if (error.status === 429) {
-				return fail(429, { email, message: 'Твърде много опити. Изчакай малко и опитай пак.' });
-			}
-			console.error('signInWithPassword failed', error);
-			return fail(503, { email, message: 'Услугата за вход не отговаря. Опитай пак след малко.' });
+			const known = ['invalid_credentials', 'email_not_confirmed', 'email_provider_disabled'].includes(error.code ?? '');
+			const status = known ? 400 : error.status === 429 ? 429 : 503;
+			if (status === 503) console.error('signInWithPassword failed', { code: error.code, status: error.status });
+			return fail(status, { email, message: loginErrorMessage(error) });
 		}
 		redirect(303, safeNext(url.searchParams.get('next')));
 	}

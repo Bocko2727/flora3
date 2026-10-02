@@ -32,7 +32,7 @@ npm run dev          # http://localhost:5174
 
 1. **GitHub:** създай repo-то като **private** преди първия push — кодът и artifact-ите на backup-а не трябва да са публични.
 2. **Supabase:** нов проект `flora3` (Free, eu-central-1). `npx supabase login`, след това `npx supabase link --project-ref <ref>` (иска паролата на базата) и `npx supabase db push`.
-3. **Auth:** Authentication → Sign In / Providers → изключи „Allow new users to sign up“ и „Allow anonymous sign-ins“.
+3. **Auth:** Authentication → Sign In / Providers. Доставчикът **Email** остава **включен** — изключваш само „Allow new users to sign up“ и „Allow anonymous sign-ins“. Ако изключиш самия Email provider, спира входът за всички. Препоръчително: „Minimum password length“ → 12.
 4. **Потребители:** Authentication → Users → Add user → Create new user (с „Auto Confirm User“) за теб и за зрителя. После в SQL Editor:
    `insert into public.editors (user_id) select id from auth.users where email = 'ТВОЯТ_ИМЕЙЛ';`
    Провери: `select count(*) from public.editors;` трябва да върне 1.
