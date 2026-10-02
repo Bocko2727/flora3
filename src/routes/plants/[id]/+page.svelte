@@ -104,6 +104,9 @@
 			<section>
 				<h2>{section.title}</h2>
 				<p class="prose">{section.text}</p>
+				{#if section.title === 'Описание' && plant.description_source === 'wikipedia' && plant.wiki_url}
+					<p class="muted source">Из Уикипедия · <a href={plant.wiki_url} target="_blank" rel="noopener">статията</a> · CC BY-SA 4.0</p>
+				{/if}
 			</section>
 		{/if}
 	{/each}
@@ -112,6 +115,7 @@
 </div>
 
 <style>
+	.source { font-size: var(--text-xs); margin-top: var(--space-1); }
 	.plant { max-width: 720px; margin: 0 auto; }
 	.back { margin: 0 0 var(--space-3); }
 	.back a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }

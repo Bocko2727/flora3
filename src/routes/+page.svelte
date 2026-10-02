@@ -46,7 +46,12 @@
 <div class="toolbar">
 	<h1>Каталог</h1>
 	{#if data.isEditor}
-		<a class="button primary" href="/plants/new">+ Растение</a>
+		<div class="actions">
+			{#if data.review && data.review.toPrepare + data.review.toDecide > 0}
+				<a class="button" href="/review">За преглед{data.review.toDecide > 0 ? ` (${data.review.toDecide})` : ''}</a>
+			{/if}
+			<a class="button primary" href="/plants/new">+ Растение</a>
+		</div>
 	{/if}
 </div>
 
@@ -105,6 +110,7 @@
 {/if}
 
 <style>
+	.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 	.toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); }
 	.toolbar h1 { margin: 0; }
 	.filters { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-4) 0 var(--space-2); }
