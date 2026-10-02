@@ -9,6 +9,7 @@ export type GbifCheck = {
 	key: number | null;
 	acceptedKey: number | null;
 	acceptedName: string | null;
+	family: string | null;
 };
 
 const SPECIES_RANKS = new Set(['SPECIES', 'SUBSPECIES', 'VARIETY', 'FORM']);
@@ -19,7 +20,7 @@ const SYNONYM_STATUSES = new Set([
 	'PROPARTE_SYNONYM'
 ]);
 
-const NONE = { match: 'none', key: null, acceptedKey: null, canonicalName: null } as const;
+const NONE = { match: 'none', key: null, acceptedKey: null, canonicalName: null, family: null } as const;
 
 function key(v: unknown): number | null {
 	return typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : null;
@@ -30,6 +31,7 @@ export function mapGbifMatch(json: unknown): {
 	key: number | null;
 	acceptedKey: number | null;
 	canonicalName: string | null;
+	family: string | null;
 } {
 	if (typeof json !== 'object' || json === null) return NONE;
 	const j = json as Record<string, unknown>;
@@ -39,14 +41,15 @@ export function mapGbifMatch(json: unknown): {
 	}
 	if (usageKey === null || typeof j.status !== 'string') return NONE;
 	const canonicalName = typeof j.canonicalName === 'string' ? j.canonicalName : null;
+	const family = typeof j.family === 'string' && j.family !== '' ? j.family : null;
 	if (j.status === 'ACCEPTED') {
-		return { match: 'accepted', key: usageKey, acceptedKey: null, canonicalName };
+		return { match: 'accepted', key: usageKey, acceptedKey: null, canonicalName, family };
 	}
 	if (SYNONYM_STATUSES.has(j.status)) {
-		return { match: 'synonym', key: usageKey, acceptedKey: key(j.acceptedUsageKey), canonicalName };
+		return { match: 'synonym', key: usageKey, acceptedKey: key(j.acceptedUsageKey), canonicalName, family };
 	}
 	if (j.status === 'DOUBTFUL') {
-		return { match: 'doubtful', key: usageKey, acceptedKey: null, canonicalName };
+		return { match: 'doubtful', key: usageKey, acceptedKey: null, canonicalName, family };
 	}
 	return NONE;
 }
@@ -89,6 +92,7 @@ export async function checkNameWithGbif(
 		match: matched.match,
 		key: matched.key,
 		acceptedKey: matched.acceptedKey,
-		acceptedName
+		acceptedName,
+		family: matched.family
 	};
 }

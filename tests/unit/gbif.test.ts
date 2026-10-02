@@ -14,8 +14,14 @@ describe('mapGbifMatch', () => {
 			match: 'accepted',
 			key: 5341258,
 			acceptedKey: null,
-			canonicalName: 'Myosotis arvensis'
+			canonicalName: 'Myosotis arvensis',
+			family: 'Boraginaceae'
 		});
+	});
+
+	it('reports a missing family as null', () => {
+		const { family: _drop, ...noFamily } = accepted as Record<string, unknown>;
+		expect(mapGbifMatch(noFamily).family).toBeNull();
 	});
 
 	it('flags a synonym with its accepted key', () => {
@@ -57,7 +63,7 @@ describe('checkNameWithGbif', () => {
 	it('returns accepted with one request and an encoded name', async () => {
 		const fetchFn = vi.fn(async () => json(accepted));
 		const r = await checkNameWithGbif('Myosotis arvensis', fetchFn as never);
-		expect(r).toEqual({ match: 'accepted', key: 5341258, acceptedKey: null, acceptedName: null });
+		expect(r).toEqual({ match: 'accepted', key: 5341258, acceptedKey: null, acceptedName: null, family: 'Boraginaceae' });
 		expect(fetchFn).toHaveBeenCalledTimes(1);
 		expect((fetchFn.mock.calls[0] as unknown[])[0]).toBe(
 			`https://api.gbif.org/v1/species/match?name=${encodeURIComponent('Myosotis arvensis')}&strict=true`
@@ -82,7 +88,8 @@ describe('checkNameWithGbif', () => {
 			match: 'synonym',
 			key: 5341262,
 			acceptedKey: 5341270,
-			acceptedName: 'Myosotis palustris'
+			acceptedName: 'Myosotis palustris',
+			family: 'Boraginaceae'
 		});
 		expect(fetchFn).toHaveBeenCalledTimes(2);
 		expect(fetchFn.mock.calls[1][0]).toBe('https://api.gbif.org/v1/species/5341270');
