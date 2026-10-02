@@ -44,7 +44,10 @@ async function changeStatus(locals: App.Locals, id: string, status: PlantStatus)
 	try {
 		await setPlantStatus(locals.supabase, id, status);
 	} catch (e) {
-		if (e instanceof UserFacingError) return fail(400, { message: e.message });
+		if (e instanceof UserFacingError) {
+			console.error(e.message, e.detail);
+			return fail(400, { message: e.message });
+		}
 		throw e;
 	}
 }

@@ -24,7 +24,10 @@
 
 <style>
 	.legacy { border: 1px dashed var(--border); border-radius: var(--radius); padding: 0.5rem 0.75rem; margin-top: 1.5rem; }
-	summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+	summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; gap: 0.5rem; }
+	summary::before { content: '▸'; display: inline-block; transition: transform 0.15s; }
+	details[open] > summary::before { transform: rotate(90deg); }
+	@media (prefers-reduced-motion: reduce) { summary::before { transition: none; } }
 	.warning { background: var(--warn-bg); color: var(--warn-text); padding: 0.5rem 0.75rem; border-radius: 8px; }
 	dt { font-weight: 600; margin-top: 0.75rem; }
 	dd { margin: 0; white-space: pre-line; }
