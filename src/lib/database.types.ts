@@ -74,7 +74,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "is_editor":
+            "delete_plant":
+{ Args: { "target_plant": string }; Returns: {
+              "path": string,"thumb_path": string
+            }[]
+                           },
+"is_editor":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "set_primary_photo":

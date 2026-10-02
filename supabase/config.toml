@@ -218,8 +218,10 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# NOTE: for the CLI this flag maps to GOTRUE_EXTERNAL_EMAIL_ENABLED (the email/password provider itself),
+# not to self-signup. Public self-signup stays disabled by `[auth] enable_signup = false`
+# (GOTRUE_DISABLE_SIGNUP); users are created by an admin only.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

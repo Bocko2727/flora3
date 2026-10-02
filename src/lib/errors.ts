@@ -1,10 +1,11 @@
 export class UserFacingError extends Error {
-	constructor(
-		message: string,
-		readonly detail?: unknown
-	) {
+	/** Diagnostic payload for server logs. Non-enumerable so it is ignored by error equality and serialization. */
+	declare readonly detail?: unknown;
+
+	constructor(message: string, detail?: unknown) {
 		super(message);
 		this.name = 'UserFacingError';
+		Object.defineProperty(this, 'detail', { value: detail, enumerable: false });
 	}
 }
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(48);
 
 insert into auth.users (id, email, aud, role, instance_id) values
   ('11111111-1111-1111-1111-111111111111', 'editor@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
@@ -106,6 +106,12 @@ select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-000
   1, 'viewer delete of a plant changes nothing');
 select is((select count(*)::int from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
   3, 'viewer delete of photos changes nothing');
+select throws_ok($$ select * from public.delete_plant('aaaaaaaa-0000-0000-0000-000000000001') $$,
+  'P0002', null, 'viewer cannot delete a plant through delete_plant');
+select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  1, 'plant survives a refused delete_plant');
+select is((select count(*)::int from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001'),
+  3, 'photos survive a refused delete_plant');
 update public.plant_photos set is_primary = true where id = 'bbbbbbbb-0000-0000-0000-000000000001';
 update public.plant_photos set is_primary = false where id = 'bbbbbbbb-0000-0000-0000-000000000002';
 select is((select array_agg(id) from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000001' and is_primary),
@@ -157,6 +163,25 @@ select throws_ok(
 select throws_ok(
   $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000002', repeat('a', 201), 'Име') $$,
   '23514', null, 'a 201-character scientific_name is rejected');
+
+-- delete_plant: editor removes a plant with two photos atomically
+insert into public.plants (id, scientific_name, name_bg) values
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'Thymus serpyllum', 'Мащерка');
+insert into public.plant_photos (id, plant_id, path, thumb_path, mime, width, height, bytes, sha256) values
+  ('bbbbbbbb-0000-0000-0000-000000000031', 'aaaaaaaa-0000-0000-0000-000000000003',
+   '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000003/bbbbbbbb-0000-0000-0000-000000000031.webp',
+   '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000003/bbbbbbbb-0000-0000-0000-000000000031_thumb.webp',
+   'image/webp', 100, 100, 10, repeat('3', 64)),
+  ('bbbbbbbb-0000-0000-0000-000000000032', 'aaaaaaaa-0000-0000-0000-000000000003',
+   '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000003/bbbbbbbb-0000-0000-0000-000000000032.webp',
+   '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000003/bbbbbbbb-0000-0000-0000-000000000032_thumb.webp',
+   'image/webp', 100, 100, 10, repeat('4', 64));
+select is((select count(*)::int from public.delete_plant('aaaaaaaa-0000-0000-0000-000000000003')),
+  2, 'delete_plant returns the paths of both deleted photos');
+select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000003'),
+  0, 'delete_plant removed the plant');
+select is((select count(*)::int from public.plant_photos where plant_id = 'aaaaaaaa-0000-0000-0000-000000000003'),
+  0, 'delete_plant removed its photos');
 
 -- anon
 reset role;
