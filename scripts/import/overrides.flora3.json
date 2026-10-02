@@ -1,0 +1,15 @@
+{
+	"excludePlants": [
+		{
+			"id": "cc99d073-2cbb-487c-994a-5b94fba14a1f",
+			"reason": "Sedum album: единствената снимка (File_005.png) е байт по байт същата като снимката на Незабравката и показва възможен Myosotis. Не се пренася до нова снимка; остава непроменен в стария проект."
+		}
+	],
+	"dropPhotos": [
+		{
+			"plantId": "060227f0-9553-4725-b84b-d9bee53b083f",
+			"url": "https://sxuxtsbyqjaodyuqebux.supabase.co/storage/v1/object/public/plant-images/File_010.png",
+			"reason": "Същият файл като File_01000000.png на Ajuga reptans (класовидно съцветие, възможна Ajuga). Pulmonaria officinalis запазва File_008.png."
+		}
+	]
+}

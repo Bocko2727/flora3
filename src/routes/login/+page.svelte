@@ -1,0 +1,44 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import type { PageProps } from './$types';
+
+	let { form }: PageProps = $props();
+	let submitting = $state(false);
+</script>
+
+<svelte:head><title>Вход · Флора</title></svelte:head>
+
+<section class="login stack">
+	<h1>Флора</h1>
+	<p class="muted">Личен ботанически каталог</p>
+	<form
+		method="POST"
+		class="stack"
+		use:enhance={() => {
+			submitting = true;
+			return async ({ update }) => {
+				await update();
+				submitting = false;
+			};
+		}}
+	>
+		<div class="field">
+			<label for="email">Имейл</label>
+			<input id="email" name="email" type="email" autocomplete="email" required defaultValue={form?.email ?? ''} />
+		</div>
+		<div class="field">
+			<label for="password">Парола</label>
+			<input id="password" name="password" type="password" autocomplete="current-password" required />
+		</div>
+		{#if form?.message}
+			<p class="error" role="alert">{form.message}</p>
+		{/if}
+		<button type="submit" class="primary" disabled={submitting}>
+			{submitting ? 'Влизане…' : 'Вход'}
+		</button>
+	</form>
+</section>
+
+<style>
+	.login { max-width: 360px; margin: 10vh auto 0; }
+</style>
