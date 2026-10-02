@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import mark from '$lib/assets/favicon.svg';
 	import type { PageProps } from './$types';
 
 	let { form }: PageProps = $props();
@@ -10,6 +11,7 @@
 
 <section class="login box stack">
 	<div>
+		<img class="mark" src={mark} alt="" width="48" height="48" />
 		<h1>Флора</h1>
 		<p class="muted tagline">Личен ботанически каталог</p>
 	</div>
@@ -42,6 +44,7 @@
 </section>
 
 <style>
+	.mark { margin-bottom: var(--space-3); }
 	.login { max-width: 380px; margin: 10vh auto 0; padding: var(--space-5); }
 	h1 { font-size: var(--text-2xl); margin: 0; }
 	.tagline { margin: var(--space-1) 0 0; }

@@ -10,7 +10,7 @@
 
 {#if data.user}
 	<header class="site-header">
-		<a class="brand" href="/">Флора</a>
+		<a class="brand" href="/"><img src={favicon} alt="" width="28" height="28" />Флора</a>
 		<form method="POST" action="/logout" class="session">
 			<span class="muted who">{data.user.email}</span>
 			<button type="submit" class="link-button">Изход</button>
