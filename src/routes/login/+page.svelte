@@ -8,9 +8,11 @@
 
 <svelte:head><title>Вход · Флора</title></svelte:head>
 
-<section class="login stack">
-	<h1>Флора</h1>
-	<p class="muted">Личен ботанически каталог</p>
+<section class="login box stack">
+	<div>
+		<h1>Флора</h1>
+		<p class="muted tagline">Личен ботанически каталог</p>
+	</div>
 	<form
 		method="POST"
 		class="stack"
@@ -40,5 +42,8 @@
 </section>
 
 <style>
-	.login { max-width: 360px; margin: 10vh auto 0; }
+	.login { max-width: 380px; margin: 10vh auto 0; padding: var(--space-5); }
+	h1 { font-size: var(--text-2xl); margin: 0; }
+	.tagline { margin: var(--space-1) 0 0; }
+	button { width: 100%; }
 </style>

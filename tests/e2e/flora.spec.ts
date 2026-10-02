@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { EDITOR, VIEWER, adminClient, type TestUser } from '../helpers/supabase';
+import { EDITOR, VIEWER, adminClient, ensureUser, resetCatalog, type TestUser } from '../helpers/supabase';
 
 const fixture = (name: string) => `tests/e2e/fixtures/${name}`;
 
@@ -291,4 +292,62 @@ test('a missing AI configuration is explained and the plant still saves', async 
 	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
 	expect(plant.data).toEqual({ name_source: 'manual' });
 	await logout(page);
+});
+
+// Runs last: the first test above expects an empty catalog, so this block starts from a clean
+// catalog of its own and removes its plants afterwards.
+test.describe('catalog pages of 6 / 12', () => {
+	const ids: string[] = [];
+	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
+	const pages = (page: Page) => page.getByRole('navigation', { name: 'Страници' });
+
+	test.beforeAll(async () => {
+		await resetCatalog();
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		const rows = Array.from({ length: 13 }, (_, i) => {
+			const n = String(i + 1).padStart(2, '0');
+			return { id: randomUUID(), name_bg: `Тест ${n}`, scientific_name: `Testus ${n}`, owner_id: ownerId };
+		});
+		const { error } = await adminClient().from('plants').insert(rows);
+		if (error) throw error;
+		ids.push(...rows.map((row) => row.id));
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().in('id', ids);
+		if (error) throw error;
+	});
+
+	test('shows 6 or 12 plants per page and keeps the page in the URL', async ({ page }) => {
+		await login(page, EDITOR);
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(14, 23, 20)');
+
+		await gotoSettled(page, '/?n=6');
+		await expect(cards(page)).toHaveCount(6);
+		await expect(pages(page).getByRole('link', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
+		await expect(pages(page).getByRole('link', { name: '2', exact: true })).not.toHaveAttribute('aria-current');
+
+		await pages(page).getByRole('link', { name: '3', exact: true }).click();
+		await expect(cards(page)).toHaveCount(1);
+		await expect(page).toHaveURL(/[?&]p=3/);
+		await expect(cards(page).first()).toContainText('Тест 13');
+
+		await pages(page).getByRole('link', { name: '12', exact: true }).click();
+		await expect(cards(page)).toHaveCount(12);
+		await expect(page).toHaveURL(/[?&]n=12/);
+		await expect(page).not.toHaveURL(/[?&]p=/);
+
+		await pages(page).getByRole('link', { name: '2', exact: true }).click();
+		await expect(page).toHaveURL(/[?&]p=2/);
+		await page.getByLabel('Търси').fill('Тест 13');
+		await expect(page).not.toHaveURL(/[?&]p=/);
+		await expect(page).toHaveURL(/[?&]q=/);
+		await expect(cards(page)).toHaveCount(1);
+		await expect(cards(page).first()).toContainText('Тест 13');
+		await expect(page.getByLabel('Търси')).toHaveValue('Тест 13');
+
+		await gotoSettled(page, '/?p=99');
+		await expect(cards(page)).toHaveCount(1);
+		await expect(pages(page).getByRole('link', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
+	});
 });

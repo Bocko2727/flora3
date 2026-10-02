@@ -4,10 +4,10 @@
 	type Props = { status: IdStatus; nameSource: NameSource; explain?: boolean };
 	let { status, nameSource, explain = false }: Props = $props();
 	const view = $derived(statusView(status, nameSource));
-	const ICONS = { draft: '○', ai_gbif: '◐', community: '●' } as const;
 </script>
 
-<span class="status-badge {view.tone}"><i aria-hidden="true">{ICONS[view.tone]}</i><span>{view.label}</span></span>
+<!-- The mark's shape carries the level (empty → half → full circle), so colour is never the only cue. -->
+<span class="status-badge {view.tone}"><i aria-hidden="true"></i><span>{view.label}</span></span>
 {#if explain}<p class="status-explain muted">{view.explanation}</p>{/if}
 
 <style>
@@ -15,17 +15,27 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
-		font-size: 0.8rem;
+		max-width: 100%;
+		font-size: var(--text-xs);
+		font-weight: 600;
 		line-height: 1.2;
-		padding: 0.15rem 0.55rem;
+		padding: 0.25rem 0.55rem 0.25rem 0.45rem;
 		border-radius: 999px;
-		border: 1px solid var(--border);
+		border: 1px solid var(--muted);
 		color: var(--muted);
-		background: transparent;
+		background: rgb(14 23 20 / 0.6);
 	}
-	.status-badge i { font-style: normal; }
-	.status-badge.draft { border-style: dashed; }
-	.status-badge.ai_gbif { border-color: var(--accent); color: var(--text); }
-	.status-badge.community { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
-	.status-explain { font-size: 0.85rem; margin: 0.35rem 0 0; }
+	.status-badge i {
+		flex: none;
+		width: 0.625rem;
+		height: 0.625rem;
+		border-radius: 50%;
+		border: 1.5px solid currentColor;
+	}
+	.draft { border-style: dashed; }
+	.ai_gbif { border-color: var(--accent); color: var(--accent); }
+	.ai_gbif i { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+	.community { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+	.community i { background: currentColor; }
+	.status-explain { font-size: var(--text-sm); margin: var(--space-2) 0 0; }
 </style>

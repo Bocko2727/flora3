@@ -31,7 +31,7 @@
 	let busy = $state<'check' | 'accepted' | 'link' | 'unlink' | null>(null);
 
 	const GRADES: Record<string, string> = { research: 'Research Grade', needs_id: 'Needs ID', casual: 'Casual' };
-	const pct = (score: number) => `${Math.round(score * 100)} %`;
+	const pct = (score: number) => `${Math.round(score * 100)}\u00a0%`;
 	const day = (iso: string) => {
 		const [y, m, d] = iso.slice(0, 10).split('-');
 		return `${d}.${m}.${y}`;
@@ -65,8 +65,8 @@
 	}
 </script>
 
-<section class="evidence">
-	<h2>Доказателства</h2>
+<section class="evidence box">
+	<h2 class="eyebrow">Доказателства</h2>
 	<dl>
 		<dt>AI</dt>
 		<dd>
@@ -157,12 +157,14 @@
 </section>
 
 <style>
-	dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
-	dt { font-weight: 600; }
-	dd { margin: 0; }
-	.warning { background: var(--warn-bg); color: var(--warn-text); padding: 0.5rem 0.75rem; border-radius: 8px; margin: 0.75rem 0 0; }
-	.warning p { margin: 0 0 0.5rem; }
-	.tools { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; align-items: flex-start; }
-	.inat { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; width: 100%; }
+	.evidence { margin-top: var(--space-4); }
+	dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; font-size: var(--text-sm); }
+	dt { color: var(--muted); }
+	dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+	dd a { display: inline-block; padding-block: 2px; }
+	.warning { background: var(--warn-bg); color: var(--warn-text); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); margin: var(--space-3) 0 0; font-size: var(--text-sm); }
+	.warning p { margin: 0 0 var(--space-2); }
+	.tools { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); align-items: flex-start; }
+	.inat { display: flex; gap: var(--space-2); align-items: flex-end; flex-wrap: wrap; width: 100%; }
 	.inat .field { flex: 1 1 14rem; }
 </style>

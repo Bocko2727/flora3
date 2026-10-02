@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterPlants, normalizeForSearch, paginate, parseCatalogParams } from '$lib/catalog/filter';
+import { filterPlants, normalizeForSearch, pageWindow, paginate, parseCatalogParams } from '$lib/catalog/filter';
 import type { IdStatus } from '$lib/status';
 
 const plants: { id: string; name_bg: string; scientific_name: string; family: string; id_status: IdStatus }[] = [
@@ -76,5 +76,21 @@ describe('parseCatalogParams', () => {
 			n: 6,
 			p: 3
 		});
+	});
+});
+
+describe('pageWindow', () => {
+	it('lists every page when there are at most 7', () => {
+		expect(pageWindow(1, 1)).toEqual([1]);
+		expect(pageWindow(3, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+	});
+	it('keeps first, last and neighbours of the current page in 7 slots', () => {
+		expect(pageWindow(1, 17)).toEqual([1, 2, 3, 4, 5, null, 17]);
+		expect(pageWindow(9, 17)).toEqual([1, null, 8, 9, 10, null, 17]);
+		expect(pageWindow(17, 17)).toEqual([1, null, 13, 14, 15, 16, 17]);
+	});
+	it('shows a single skipped page instead of an ellipsis', () => {
+		expect(pageWindow(4, 17)).toEqual([1, 2, 3, 4, 5, null, 17]);
+		expect(pageWindow(14, 17)).toEqual([1, null, 13, 14, 15, 16, 17]);
 	});
 });

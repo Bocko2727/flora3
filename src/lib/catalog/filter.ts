@@ -43,3 +43,15 @@ export function parseCatalogParams(params: URLSearchParams): { q: string; s: Sta
 		p: Number.isInteger(p) && p >= 1 ? p : 1
 	};
 }
+
+/** Page numbers to show: first, last and the current one with its neighbours; `null` marks a gap (at most 7 slots). */
+export function pageWindow(page: number, pages: number): (number | null)[] {
+	if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+	const from = Math.max(2, Math.min(page - 1, pages - 4));
+	const to = Math.min(pages - 1, Math.max(page + 1, 5));
+	const middle = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+	// A gap of exactly one page shows that page instead of an ellipsis.
+	const before = from === 3 ? [2] : from > 3 ? [null] : [];
+	const after = to === pages - 2 ? [pages - 1] : to < pages - 2 ? [null] : [];
+	return [1, ...before, ...middle, ...after, pages];
+}

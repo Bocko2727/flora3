@@ -67,7 +67,7 @@
 	});
 </script>
 
-<section class="ai" aria-label="AI предложения">
+<section class="ai" class:box={phase !== 'idle'} aria-label="AI предложения">
 	<div class="status" role="status" aria-live="polite">
 		{#if phase === 'loading'}<span class="spinner" aria-hidden="true"></span>{/if}
 		{#if statusText}<span class:error={phase === 'error'}>{statusText}</span>{/if}
@@ -83,11 +83,13 @@
 						aria-pressed={pickedIndex === index}
 						onclick={() => onpick(candidate, index)}
 					>
+						<span class="mark" aria-hidden="true"></span>
 						<span class="name"><em>{candidate.scientific_name}</em></span>
 						<span class="score">{pct(candidate.score)}</span>
 						{#if candidate.family || candidate.common_names.length > 0}
 							<span class="meta">{[candidate.family, candidate.common_names.slice(0, 2).join(', ')].filter(Boolean).join(' · ')}</span>
 						{/if}
+						<span class="meter" aria-hidden="true"><b style:width={`${Math.round(candidate.score * 100)}%`}></b></span>
 					</button>
 				</li>
 			{/each}
@@ -99,7 +101,8 @@
 </section>
 
 <style>
-	.status { display: flex; align-items: center; gap: 0.5rem; min-height: 0; }
+	.ai.box { margin: var(--space-3) 0; }
+	.status { display: flex; align-items: center; gap: var(--space-2); min-height: 0; font-size: var(--text-sm); color: var(--muted); }
 	.status .error { color: var(--danger); }
 	.spinner {
 		width: 1rem;
@@ -111,17 +114,26 @@
 	}
 	@keyframes spin { to { transform: rotate(360deg); } }
 	@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
-	.candidates { list-style: none; padding: 0; margin: 0.5rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
+	.candidates { list-style: none; padding: 0; margin: var(--space-3) 0; display: flex; flex-direction: column; gap: var(--space-2); }
 	.candidate {
 		width: 100%;
 		display: grid;
-		grid-template-columns: 1fr auto;
-		gap: 0.125rem 0.5rem;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		gap: 2px var(--space-3);
+		padding: var(--space-3);
 		text-align: left;
 		align-items: center;
+		background: var(--surface-2);
+		border-color: var(--border);
 	}
-	.candidate[aria-pressed='true'] { border-color: var(--accent); outline: 2px solid var(--accent); }
-	.score { font-weight: 600; font-variant-numeric: tabular-nums; }
-	.meta { grid-column: 1 / -1; color: var(--muted); font-size: 0.875rem; }
-	.attribution { margin: 0; font-size: 0.875rem; }
+	.candidate[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+	/* Picked state also changes shape: an empty ring becomes a filled dot. */
+	.mark { width: 1rem; height: 1rem; border-radius: 50%; border: 1.5px solid var(--line-strong); grid-row: 1 / span 2; }
+	.candidate[aria-pressed='true'] .mark { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+	.name { font-size: var(--text-base); line-height: 1.25; overflow-wrap: anywhere; }
+	.score { font-weight: 600; font-variant-numeric: tabular-nums; font-size: var(--text-sm); }
+	.meta { grid-column: 2 / -1; color: var(--muted); font-size: var(--text-sm); font-weight: 400; }
+	.meter { grid-column: 2 / -1; height: 3px; margin-top: var(--space-1); border-radius: 2px; background: var(--border); overflow: hidden; }
+	.meter b { display: block; height: 100%; background: var(--accent); }
+	.attribution { margin: 0; font-size: var(--text-xs); }
 </style>
