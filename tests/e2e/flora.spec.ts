@@ -267,6 +267,57 @@ test('AI suggestions can be requested from the saved photos when editing', async
 	await logout(page);
 });
 
+test('identify button stays locked while AI is thinking', async ({ page }) => {
+	let calls = 0;
+	await page.route(IDENTIFY_URL, async (route) => {
+		calls += 1;
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		await route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, `${aiPlantUrl}/edit`);
+	const button = page.getByRole('button', { name: /Разпознай по снимките|Зареждане на снимките/ });
+	await button.click();
+	await expect(page.getByText('Разпознаване…')).toBeVisible({ timeout: 30_000 });
+	await expect(button).toBeDisabled();
+	await button.click({ force: true });
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await expect(button).toBeEnabled();
+	expect(calls).toBe(1);
+	await logout(page);
+});
+
+test('status stamp text is at least 11px and stays inside the ring', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 780 });
+	await login(page, EDITOR);
+	const measure = () =>
+		page.locator('.stamp').evaluate((el) => {
+			const label = el.lastElementChild as HTMLElement;
+			return {
+				size: parseFloat(getComputedStyle(label).fontSize),
+				fits: el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight
+			};
+		});
+	await gotoSettled(page, aiPlantUrl);
+	expect(await measure()).toEqual({ size: expect.any(Number), fits: true });
+	expect((await measure()).size).toBeGreaterThanOrEqual(11);
+
+	// The longest label ("Потвърдено · iNaturalist") is the hardest case.
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const plant = await admin.from('plants').select('scientific_name').eq('id', id).single();
+	await admin
+		.from('plants')
+		.update({ inat_quality_grade: 'research', inat_taxon_name: plant.data!.scientific_name, inat_observation_id: 1 })
+		.eq('id', id);
+	await gotoSettled(page, aiPlantUrl);
+	await expect(page.locator('.stamp')).toContainText('Потвърдено');
+	const community = await measure();
+	expect(community.fits).toBe(true);
+	expect(community.size).toBeGreaterThanOrEqual(11);
+	await logout(page);
+});
+
 test('a missing AI configuration is explained and the plant still saves', async ({ page }) => {
 	await page.route(IDENTIFY_URL, (route) =>
 		route.fulfill({
@@ -284,6 +335,31 @@ test('a missing AI configuration is explained and the plant still saves', async 
 	await page.getByRole('button', { name: 'Запази растението' }).click();
 	await expect(page.getByRole('heading', { name: 'Маргаритка' })).toBeVisible({ timeout: 30_000 });
 	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+
+	const id = new URL(page.url()).pathname.split('/').pop()!;
+	const admin = adminClient();
+	const { count } = await admin.from('identifications').select('*', { count: 'exact', head: true }).eq('plant_id', id);
+	expect(count).toBe(0);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'manual' });
+	await logout(page);
+});
+
+test('clearing the photos drops the AI suggestions and saves no identification', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	const input = page.getByLabel('Снимки', { exact: true });
+	await input.setInputFiles([fixture('leaf-a.jpg')]);
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await input.setInputFiles([]);
+	await expect(page.getByText('Bellis perennis')).toBeHidden();
+	await page.getByLabel('Българско име').fill('Изчистено');
+	await page.getByLabel('Латинско име').fill('Bellis sp.');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Изчистено' })).toBeVisible({ timeout: 30_000 });
 
 	const id = new URL(page.url()).pathname.split('/').pop()!;
 	const admin = adminClient();

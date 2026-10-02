@@ -5,7 +5,6 @@
 	import AiSuggestions from '$lib/components/AiSuggestions.svelte';
 	import PhotoUploader from '$lib/components/PhotoUploader.svelte';
 	import PlantForm from '$lib/components/PlantForm.svelte';
-	import { IDENTIFY_MAX_IMAGES } from '$lib/identify/client';
 	import type { Candidate, IdentifyOk } from '$lib/identify/types';
 	import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
 	import type { PlantFormValues } from '$lib/schemas/plant';
@@ -18,7 +17,7 @@
 	let selected = $state<File[]>([]);
 	let runKey = $state(0);
 	let ident = $state<IdentifyOk | null>(null);
-	let identPhotoCount = $state(1);
+	let identPhotoCount = $state(0);
 	let pickedIndex = $state<number | null>(null);
 	let tooMany = $state(false);
 	let submitting = $state(false);
@@ -37,7 +36,7 @@
 		const all = [...(files ?? [])];
 		tooMany = all.length > MAX_FILES_PER_BATCH;
 		selected = all.slice(0, MAX_FILES_PER_BATCH);
-		if (selected.length > 0) runKey += 1;
+		runKey += 1; // an empty selection also resets the AI suggestions
 	}
 
 	function pickCandidate(candidate: Candidate, index: number) {
@@ -46,9 +45,9 @@
 		pickedIndex = index;
 	}
 
-	function receive(result: IdentifyOk | null) {
+	function receive(result: IdentifyOk | null, sent: number) {
 		ident = result;
-		identPhotoCount = Math.min(Math.max(selected.length, 1), IDENTIFY_MAX_IMAGES);
+		identPhotoCount = sent;
 		if (!result) pickedIndex = null;
 	}
 

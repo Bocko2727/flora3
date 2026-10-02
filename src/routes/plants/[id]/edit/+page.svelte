@@ -21,13 +21,15 @@
 	let sources = $state<Blob[]>([]);
 	let runKey = $state(0);
 	let ident = $state<IdentifyOk | null>(null);
-	let identPhotoCount = $state(1);
+	let identPhotoCount = $state(0);
 	let pickedIndex = $state<number | null>(null);
 	let fetchingPhotos = $state(false);
+	let loadFailed = $state(false);
+	let identifying = $state(false);
 
 	/** Newest photos first, up to the identify limit; the saved (full-size) version is downscaled in the browser. */
 	async function identifyPhotos() {
-		if (fetchingPhotos) return;
+		if (fetchingPhotos || identifying) return;
 		fetchingPhotos = true;
 		try {
 			const newest = [...data.photos]
@@ -44,6 +46,8 @@
 					console.warn('Снимка пропусната при разпознаване:', e);
 				}
 			}
+			loadFailed = blobs.length === 0;
+			if (loadFailed) return;
 			sources = blobs;
 			runKey += 1;
 		} finally {
@@ -57,9 +61,9 @@
 		pickedIndex = index;
 	}
 
-	function receive(result: IdentifyOk | null) {
+	function receive(result: IdentifyOk | null, sent: number) {
 		ident = result;
-		identPhotoCount = Math.min(Math.max(sources.length, 1), IDENTIFY_MAX_IMAGES);
+		identPhotoCount = sent;
 		if (!result) pickedIndex = null;
 	}
 
@@ -81,9 +85,10 @@
 <h1>Редакция: {data.plant.name_bg}</h1>
 
 {#if data.photos.length > 0}
-	<button type="button" disabled={fetchingPhotos} onclick={() => void identifyPhotos()}>
+	<button type="button" disabled={fetchingPhotos || identifying} onclick={() => void identifyPhotos()}>
 		{fetchingPhotos ? 'Зареждане на снимките…' : 'Разпознай по снимките'}
 	</button>
+	{#if loadFailed}<p class="field-error" role="alert">Снимките не можаха да се заредят. Опитай пак.</p>{/if}
 {/if}
 <AiSuggestions
 	{sources}
@@ -92,6 +97,7 @@
 	onresult={receive}
 	{pickedIndex}
 	onretry={() => void identifyPhotos()}
+	bind:busy={identifying}
 />
 
 <form

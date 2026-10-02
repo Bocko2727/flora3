@@ -101,6 +101,17 @@ export async function prepareImages(
 	return images;
 }
 
+/** Converts and sends; `sent` is the number of images that actually went to the API (0 means no request). */
+export async function identifyBlobs(
+	blobs: Blob[],
+	convert: (blob: Blob) => Promise<Blob> = toIdentifyJpeg,
+	request: (images: Blob[]) => Promise<IdentifyResult> = (images) => requestIdentification(images)
+): Promise<{ result: IdentifyResult; sent: number }> {
+	const images = await prepareImages(blobs, convert);
+	if (images.length === 0) return { result: fail('bad_request'), sent: 0 };
+	return { result: await request(images), sent: images.length };
+}
+
 /** Wraps an async call so that only the most recently started call is reported as current. */
 export function latestOnly<A extends unknown[], R>(
 	fn: (...args: A) => Promise<R>

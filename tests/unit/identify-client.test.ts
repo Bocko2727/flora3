@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { latestOnly, prepareImages, requestIdentification } from '$lib/identify/client';
+import { identifyBlobs, latestOnly, prepareImages, requestIdentification } from '$lib/identify/client';
 import { IDENTIFY_MESSAGES, type IdentifyOk } from '$lib/identify/types';
 
 const okBody: IdentifyOk = {
@@ -112,5 +112,37 @@ describe('prepareImages', () => {
 		const result = await prepareImages(Array.from({ length: 7 }, blob), convert);
 		expect(convert).toHaveBeenCalledTimes(5);
 		expect(result).toHaveLength(5);
+	});
+});
+
+describe('identifyBlobs', () => {
+	it('counts only converted images', async () => {
+		let calls = 0;
+		const convert = async (b: Blob) => {
+			calls += 1;
+			if (calls === 2) throw new Error('decode failed');
+			return b;
+		};
+		const request = vi.fn(async () => ({ ok: true as const, modelVersion: null, candidates: [] }));
+		const { sent, result } = await identifyBlobs([blob(), blob(), blob()], convert, request);
+		expect(sent).toBe(2);
+		expect(result.ok).toBe(true);
+		expect(request).toHaveBeenCalledTimes(1);
+		expect((request.mock.calls[0] as unknown as [Blob[]])[0]).toHaveLength(2);
+	});
+
+	it('does not call the API when nothing converts', async () => {
+		const request = vi.fn();
+		const { sent, result } = await identifyBlobs(
+			[blob(), blob()],
+			async () => {
+				throw new Error('decode failed');
+			},
+			request
+		);
+		expect(sent).toBe(0);
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.code).toBe('bad_request');
+		expect(request).not.toHaveBeenCalled();
 	});
 });
