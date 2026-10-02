@@ -3,18 +3,20 @@ import { parseArgs } from 'node:util';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '../src/lib/database.types';
+import { applyOverrides, parseOverrides } from './import/overrides';
 import { emptyReport, importLegacy, verifyOwner } from './import/run';
 
 const { values } = parseArgs({
 	options: {
 		source: { type: 'string' },
 		apply: { type: 'boolean', default: false },
+		overrides: { type: 'string' },
 		report: { type: 'string', default: 'import-report.json' }
 	}
 });
 
 if (!values.source) {
-	console.error('Usage: npm run import:legacy -- --source legacy-export.json [--apply] [--report import-report.json]');
+	console.error('Usage: npm run import:legacy -- --source legacy-export.json [--overrides overrides.json] [--apply] [--report import-report.json]');
 	process.exit(2);
 }
 
@@ -40,14 +42,27 @@ try {
 	console.error(`Cannot read ${values.source} as JSON: ${e instanceof Error ? e.message : String(e)}`);
 	process.exit(2);
 }
-const records = Array.isArray(parsed)
+const sourceRecords = Array.isArray(parsed)
 	? parsed
 	: typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { plants?: unknown }).plants)
 		? (parsed as { plants: unknown[] }).plants
 		: null;
-if (!records) {
+if (!sourceRecords) {
 	console.error('The source file must be a JSON array of plants or an object with a "plants" array.');
 	process.exit(2);
+}
+
+let records: unknown[] = sourceRecords;
+let overridesApplied: string[] = [];
+if (values.overrides) {
+	try {
+		const result = applyOverrides(sourceRecords, parseOverrides(JSON.parse(readFileSync(values.overrides, 'utf8'))));
+		records = result.records;
+		overridesApplied = result.applied;
+	} catch (e) {
+		console.error(`Invalid overrides ${values.overrides}: ${e instanceof Error ? e.message : String(e)}`);
+		process.exit(2);
+	}
 }
 
 const db = createClient<Database>(env.NEW_SUPABASE_URL, env.NEW_SUPABASE_SECRET_KEY, {
@@ -63,6 +78,7 @@ try {
 }
 console.log(`Target: ${new URL(env.NEW_SUPABASE_URL).host}`);
 console.log(`Owner: ${owner.email}`);
+for (const line of overridesApplied) console.log(`Override: ${line}`);
 console.log(values.apply ? 'APPLY mode: writing to the new project.' : 'DRY-RUN: nothing will be written.');
 const report = emptyReport(values.apply);
 try {
@@ -70,11 +86,11 @@ try {
 } catch (e) {
 	// Keep what was done so far, then fail loudly.
 	report.errors.push({ plantId: null, message: `Aborted: ${e instanceof Error ? e.message : String(e)}` });
-	writeFileSync(values.report, JSON.stringify(report, null, 2));
+	writeFileSync(values.report, JSON.stringify({ overridesApplied, ...report }, null, 2));
 	console.error(`Import aborted; partial report: ${values.report}`);
 	throw e;
 }
-writeFileSync(values.report, JSON.stringify(report, null, 2));
+writeFileSync(values.report, JSON.stringify({ overridesApplied, ...report }, null, 2));
 const duplicates = report.skipped.filter((s) => s.reason === 'duplicate-of-other-plant');
 console.log(
 	JSON.stringify(
