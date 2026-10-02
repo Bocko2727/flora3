@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { EDITOR, VIEWER, adminClient, type TestUser } from '../helpers/supabase';
 
@@ -55,7 +56,7 @@ test('editor adds a plant with two photos', async ({ page }) => {
 	await page.getByRole('link', { name: '+ Растение' }).click();
 	await page.getByLabel('Българско име').fill('Паричка');
 	await page.getByLabel('Латинско име').fill('Bellis perennis');
-	await page.getByLabel('Снимки (по желание)').setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
 	await page.getByRole('button', { name: 'Запази растението' }).click();
 	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
 	plantUrl = new URL(page.url()).pathname;
@@ -204,4 +205,90 @@ test('editor deletes the plant with all its photos', async ({ page }) => {
 	const folder = await admin.storage.from('photos').list(`${ownerId}/${plantId()}`);
 	expect(folder.error).toBeNull();
 	expect(folder.data).toEqual([]);
+});
+
+const IDENTIFY_URL = '**/api/identify';
+const identifyOk = readFileSync('tests/e2e/fixtures/identify-ok.json', 'utf8');
+let aiPlantUrl = '';
+
+test('AI suggestions fill the name when adding a plant and are stored with the plant', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg')]);
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('71 %')).toBeVisible();
+	await expect(page.getByText('Разпознаването използва Pl@ntNet API.')).toBeVisible();
+
+	await page.getByRole('button', { name: /Bellis perennis/ }).click();
+	await expect(page.getByLabel('Латинско име')).toHaveValue('Bellis perennis');
+	await expect(page.getByLabel('Семейство')).toHaveValue('Asteraceae');
+	await page.getByLabel('Българско име').fill('Паричка');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+
+	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
+	aiPlantUrl = new URL(page.url()).pathname;
+	// e2e runs with FLORA_OFFLINE_EXTERNAL=1, so GBIF cannot confirm the name: AI draft, not AI + GBIF.
+	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
+
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const stored = await admin.from('identifications').select('chosen_index, photo_count, candidates').eq('plant_id', id);
+	expect(stored.data).toHaveLength(1);
+	expect(stored.data?.[0]).toMatchObject({ chosen_index: 0, photo_count: 1 });
+	expect((stored.data?.[0].candidates as unknown[]).length).toBe(2);
+	const plant = await admin.from('plants').select('name_source, scientific_name').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'ai', scientific_name: 'Bellis perennis' });
+});
+
+test('AI suggestions can be requested from the saved photos when editing', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await gotoSettled(page, `${aiPlantUrl}/edit`);
+	await page.getByRole('button', { name: 'Разпознай по снимките' }).click();
+	await expect(page.getByText('Bellis sylvestris')).toBeVisible({ timeout: 30_000 });
+	await page.getByRole('button', { name: /Bellis sylvestris/ }).click();
+	await expect(page.getByLabel('Латинско име')).toHaveValue('Bellis sylvestris');
+	await page.getByRole('button', { name: 'Запази', exact: true }).click();
+	await expect(page.getByText('Bellis sylvestris').first()).toBeVisible();
+	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
+
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const rows = await admin.from('identifications').select('chosen_index').eq('plant_id', id);
+	expect(rows.data).toHaveLength(2);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'ai' });
+	await logout(page);
+});
+
+test('a missing AI configuration is explained and the plant still saves', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({
+			status: 503,
+			contentType: 'application/json',
+			body: JSON.stringify({ ok: false, code: 'not_configured', message: 'AI разпознаването не е настроено.' })
+		})
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-b.jpg')]);
+	await expect(page.getByText('AI разпознаването не е настроено.')).toBeVisible({ timeout: 30_000 });
+	await page.getByLabel('Българско име').fill('Маргаритка');
+	await page.getByLabel('Латинско име').fill('Leucanthemum vulgare');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Маргаритка' })).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+
+	const id = new URL(page.url()).pathname.split('/').pop()!;
+	const admin = adminClient();
+	const { count } = await admin.from('identifications').select('*', { count: 'exact', head: true }).eq('plant_id', id);
+	expect(count).toBe(0);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'manual' });
+	await logout(page);
 });

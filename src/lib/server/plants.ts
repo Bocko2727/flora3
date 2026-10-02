@@ -3,7 +3,7 @@ import type { Database } from '$lib/database.types';
 import { UserFacingError, describeDbError } from '$lib/errors';
 import type { PlantFormData } from '$lib/schemas/plant';
 import { isIdStatus, type IdStatus, type NameSource } from '$lib/status';
-import type { Candidate } from '$lib/identify/types';
+import type { Candidate, IdentificationInput } from '$lib/identify/types';
 import type { PhotoRow, PlantRow } from '$lib/types';
 
 export type Db = SupabaseClient<Database>;
@@ -88,17 +88,44 @@ export async function createPlant(
 	if (error) throw new UserFacingError(describeDbError(error, 'Растението не можа да се запише.'), error);
 }
 
+/** GBIF evidence belongs to one name; a rename must not keep it, even if the re-check later fails. */
+const CLEARED_GBIF_EVIDENCE = {
+	gbif_match: null,
+	gbif_key: null,
+	gbif_accepted_key: null,
+	gbif_accepted_name: null,
+	gbif_checked_at: null
+};
+
 export async function updatePlant(
 	db: Db,
 	id: string,
 	input: PlantFormData,
-	nameSource?: NameSource
+	nameSource?: NameSource,
+	clearGbifEvidence = false
 ): Promise<void> {
 	const { data, error } = await db
 		.from('plants')
-		.update(nameSource ? { ...input, name_source: nameSource } : input).eq('id', id).select('id');
+		.update({
+			...input,
+			...(nameSource ? { name_source: nameSource } : {}),
+			...(clearGbifEvidence ? CLEARED_GBIF_EVIDENCE : {})
+		})
+		.eq('id', id)
+		.select('id');
 	if (error) throw new UserFacingError(describeDbError(error, 'Промените не можаха да се запишат.'), error);
 	if (data.length === 0) throw new UserFacingError(NOT_FOUND_OR_FORBIDDEN);
+}
+
+export async function insertIdentification(db: Db, plantId: string, ident: IdentificationInput): Promise<void> {
+	const { error } = await db.from('identifications').insert({
+		plant_id: plantId,
+		model_version: ident.modelVersion,
+		photo_count: ident.photoCount,
+		candidates: ident.candidates,
+		chosen_index: ident.chosenIndex
+	});
+	if (error) throw new UserFacingError(describeDbError(error, 'Разпознаването не можа да се запише.'), error);
 }
 
 export async function deletePlant(db: Db, id: string): Promise<void> {

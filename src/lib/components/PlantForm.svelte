@@ -10,10 +10,14 @@
 		type LegacyAiField
 	} from '$lib/types';
 
-	type Props = { initial: PlantFormValues; errors?: PlantFormErrors; legacy?: LegacyAi | null };
-	let { initial, errors = {}, legacy = null }: Props = $props();
-
-	let values = $state(untrack(() => ({ ...initial })));
+	type Props = {
+		initial: PlantFormValues;
+		errors?: PlantFormErrors;
+		legacy?: LegacyAi | null;
+		/** Bind to read or set the fields from outside; without a binding the form owns a copy of `initial`. */
+		values?: PlantFormValues;
+	};
+	let { initial, errors = {}, legacy = null, values = $bindable(untrack(() => ({ ...initial }))) }: Props = $props();
 
 	type TextTarget = 'description' | 'habitat' | 'notes';
 	const TARGET: Record<LegacyAiField, TextTarget> = {
