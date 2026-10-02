@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(51);
 
 insert into auth.users (id, email, aud, role, instance_id) values
   ('11111111-1111-1111-1111-111111111111', 'editor@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
@@ -11,6 +11,7 @@ select is((select public from storage.buckets where id = 'photos'), false, 'phot
 
 select is(has_table_privilege('authenticated', 'public.plants', 'select'), true, 'authenticated has an explicit select grant on plants');
 select is(has_table_privilege('authenticated', 'public.plants', 'truncate'), false, 'authenticated cannot truncate plants');
+select is(has_table_privilege('authenticated', 'public.editors', 'delete'), false, 'authenticated cannot delete from editors');
 
 set local role authenticated;
 
