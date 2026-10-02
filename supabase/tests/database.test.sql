@@ -3,8 +3,8 @@ create extension if not exists pgtap with schema extensions;
 select plan(50);
 
 insert into auth.users (id, email, aud, role, instance_id) values
-  ('11111111-1111-1111-1111-111111111111', 'editor@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('22222222-2222-2222-2222-222222222222', 'viewer@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
+  ('11111111-1111-1111-1111-111111111111', 'editor@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('22222222-2222-2222-2222-222222222222', 'viewer@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
 insert into public.editors (user_id) values ('11111111-1111-1111-1111-111111111111');
 
 select is((select public from storage.buckets where id = 'photos'), false, 'photos bucket is private');
@@ -44,7 +44,7 @@ select lives_ok(
 
 -- plants: viewer reads, cannot update
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
-select is((select count(*)::int from public.plants), 1, 'viewer can read plants');
+select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1, 'viewer can read plants');
 update public.plants set name_bg = 'Хакната' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 select is((select name_bg from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'),
   'Паричка', 'viewer update changes nothing');
@@ -136,7 +136,7 @@ select throws_ok($$ update public.plant_photos set path = 'x' where id = 'bbbbbb
 -- a second editor with their own plant: editor 1 must not touch it
 reset role;
 insert into auth.users (id, email, aud, role, instance_id) values
-  ('33333333-3333-3333-3333-333333333333', 'editor2@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
+  ('33333333-3333-3333-3333-333333333333', 'editor2@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
 insert into public.editors (user_id) values ('33333333-3333-3333-3333-333333333333');
 insert into public.plants (id, owner_id, scientific_name, name_bg) values
   ('dddddddd-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'Taraxacum officinale', 'Глухарче');
