@@ -64,6 +64,7 @@ npm run dev          # http://localhost:5174
 3. Преди третата: `select count(*) from public.plants where status = 'confirmed';` трябва да е **0**. После `20261004100000_drop_self_confirm.sql`. Връщане: `alter table public.plants add column status text not null default 'unverified' check (status in ('unverified','confirmed')), add column confirmed_at timestamptz, add constraint plants_confirmed_consistency check ((status = 'confirmed') = (confirmed_at is not null));` и deploy на предишната версия на приложението.
 
 Миграции 2 и 3 и новият код вървят заедно: първо миграциите, веднага след това deploy.
+4. `20261005090000_legacy_review.sql` — **преди** merge на кода за прегледа (новият код чете новите колони; старият работи и с тях). Проверка: `select count(*) from public.plants p where name_source='legacy_ai' and public.id_status(p) <> 'draft';` = 0; растенията с избран кандидат пазят статуса си. Връщане: `drop policy "identifications: editor decides own review" on public.identifications; drop index public.identifications_one_review; alter table public.identifications drop constraint identifications_decision_review_only, drop column source, drop column decision, drop column wiki; alter table public.plants drop column description_source, drop column wiki_url;` и предишната версия на `public.id_status` от `20261004090000_identification_status.sql`.
 
 ## Ограничения на безплатните планове
 
