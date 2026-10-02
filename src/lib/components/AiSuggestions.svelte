@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { latestOnly, prepareImages, requestIdentification } from '$lib/identify/client';
-	import { fail, type Candidate, type IdentifyOk, type IdentifyResult } from '$lib/identify/types';
+	import { identifyBlobs, latestOnly } from '$lib/identify/client';
+	import { fail, type Candidate, type IdentifyOk } from '$lib/identify/types';
 
 	type Props = {
 		sources: Blob[];
 		runKey: number;
 		onpick: (candidate: Candidate, index: number) => void;
-		onresult: (result: IdentifyOk | null) => void;
+		/** `sent` = images that actually reached the API (failed conversions are not counted). */
+		onresult: (result: IdentifyOk | null, sent: number) => void;
 		pickedIndex: number | null;
 		/** Replaces the built-in retry when the parent has to rebuild `sources` first. */
 		onretry?: () => void;
@@ -20,11 +21,7 @@
 	let errorCode = $state<string | null>(null);
 	let errorMessage = $state('');
 
-	const identify = latestOnly(async (blobs: Blob[]): Promise<IdentifyResult> => {
-		const images = await prepareImages(blobs);
-		if (images.length === 0) return fail('bad_request');
-		return requestIdentification(images);
-	});
+	const identify = latestOnly((blobs: Blob[]) => identifyBlobs(blobs));
 
 	const pct = (score: number) => `${Math.round(score * 100)} %`;
 	const retryable = $derived(errorCode === 'upstream' || errorCode === 'bad_request');
@@ -39,17 +36,24 @@
 	);
 
 	async function run() {
-		phase = 'loading';
 		candidates = [];
 		errorCode = null;
 		errorMessage = '';
-		onresult(null);
-		const { stale, value } = await identify([...sources]);
+		onresult(null, 0);
+		if (sources.length === 0) {
+			// Selection cleared: drop old suggestions, no request.
+			phase = 'idle';
+			void identify([]); // marks any request still in flight as stale
+			return;
+		}
+		phase = 'loading';
+		const { stale, value: outcome } = await identify([...sources]);
 		if (stale) return;
+		const value = outcome.result;
 		if (value.ok && value.candidates.length > 0) {
 			candidates = value.candidates;
 			phase = 'ok';
-			onresult(value);
+			onresult(value, outcome.sent);
 			return;
 		}
 		const failure = value.ok ? fail('no_match') : value;

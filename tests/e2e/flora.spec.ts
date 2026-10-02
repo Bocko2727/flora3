@@ -294,6 +294,31 @@ test('a missing AI configuration is explained and the plant still saves', async 
 	await logout(page);
 });
 
+test('clearing the photos drops the AI suggestions and saves no identification', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	const input = page.getByLabel('Снимки', { exact: true });
+	await input.setInputFiles([fixture('leaf-a.jpg')]);
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await input.setInputFiles([]);
+	await expect(page.getByText('Bellis perennis')).toBeHidden();
+	await page.getByLabel('Българско име').fill('Изчистено');
+	await page.getByLabel('Латинско име').fill('Bellis sp.');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Изчистено' })).toBeVisible({ timeout: 30_000 });
+
+	const id = new URL(page.url()).pathname.split('/').pop()!;
+	const admin = adminClient();
+	const { count } = await admin.from('identifications').select('*', { count: 'exact', head: true }).eq('plant_id', id);
+	expect(count).toBe(0);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'manual' });
+	await logout(page);
+});
+
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
 test.describe('catalog pages of 6 / 12', () => {
