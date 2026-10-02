@@ -1,0 +1,17 @@
+{
+  "total_results": 1,
+  "page": 1,
+  "per_page": 30,
+  "results": [
+    {
+      "id": 123456,
+      "quality_grade": "research",
+      "taxon": {
+        "id": 57221,
+        "name": "Myosotis arvensis",
+        "rank": "species"
+      },
+      "observed_on": "2026-05-14"
+    }
+  ]
+}
