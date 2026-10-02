@@ -1,0 +1,140 @@
+import { expect, test, type Page } from '@playwright/test';
+import { EDITOR, VIEWER, adminClient, type TestUser } from '../helpers/supabase';
+
+const fixture = (name: string) => `tests/e2e/fixtures/${name}`;
+
+// The dev server hydrates after the first paint; typing before that resets the controlled
+// email input. Wait for the module requests to settle before touching the form.
+async function gotoSettled(page: Page, url: string) {
+	await page.goto(url);
+	await page.waitForLoadState('networkidle');
+}
+
+async function login(page: Page, user: TestUser) {
+	await gotoSettled(page, '/login');
+	await page.getByLabel('Имейл').fill(user.email);
+	await page.getByLabel('Парола').fill(user.password);
+	await page.getByRole('button', { name: 'Вход' }).click();
+	await expect(page.getByRole('heading', { name: 'Каталог' })).toBeVisible();
+}
+
+async function logout(page: Page) {
+	await page.getByRole('button', { name: 'Изход' }).click();
+	await expect(page).toHaveURL(/\/login/);
+}
+
+test.describe.configure({ mode: 'serial' });
+
+let plantUrl = '';
+
+test('login rejects a wrong password and protects pages', async ({ page }) => {
+	await gotoSettled(page, '/');
+	await expect(page).toHaveURL(/\/login\?next=%2F/);
+	await page.getByLabel('Имейл').fill(EDITOR.email);
+	await page.getByLabel('Парола').fill('wrong-password-123');
+	await page.getByRole('button', { name: 'Вход' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Грешен имейл или парола.');
+	await login(page, EDITOR);
+	await expect(page.getByText('Още няма растения.')).toBeVisible();
+});
+
+test('editor adds a plant with two photos', async ({ page }) => {
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Българско име').fill('Паричка');
+	await page.getByLabel('Латинско име').fill('Bellis perennis');
+	await page.getByLabel('Снимки (по желание)').setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
+	plantUrl = new URL(page.url()).pathname;
+	await expect(page.getByRole('button', { name: /Отвори снимка \d от 2/ })).toHaveCount(2);
+
+	const { data } = await adminClient().from('plant_photos').select('is_primary, mime').eq('plant_id', plantUrl.split('/').pop()!);
+	expect(data?.filter((p) => p.is_primary).length).toBe(1);
+	expect(data?.every((p) => p.mime === 'image/webp')).toBe(true);
+});
+
+test('gallery opens full screen and closes with Escape', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, plantUrl);
+	await page.getByRole('button', { name: 'Отвори снимка 1 от 2' }).click();
+	const viewer = page.getByRole('dialog', { name: 'Снимка на цял екран' });
+	await expect(viewer).toBeVisible();
+	await expect(viewer.getByText('1 / 2')).toBeVisible();
+	await viewer.getByRole('button', { name: 'Следваща' }).click();
+	await expect(viewer.getByText('2 / 2')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(viewer).toBeHidden();
+});
+
+test('duplicate photo is rejected and a rotated photo keeps portrait orientation', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, `${plantUrl}/edit`);
+	await page.getByLabel('Добави снимки').setInputFiles([fixture('leaf-a.jpg')]);
+	await expect(page.getByText('Тази снимка вече е качена.')).toBeVisible({ timeout: 30_000 });
+
+	await page.getByLabel('Добави снимки').setInputFiles([fixture('rotated.jpg')]);
+	await expect(page.getByText('Готово')).toBeVisible({ timeout: 30_000 });
+	const { data } = await adminClient()
+		.from('plant_photos')
+		.select('width, height')
+		.eq('plant_id', plantUrl.split('/').pop()!)
+		.eq('width', 300);
+	expect(data).toEqual([{ width: 300, height: 400 }]);
+});
+
+test('editor edits the plant, changes the primary photo and confirms it', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, `${plantUrl}/edit`);
+	await page.getByRole('button', { name: 'Направи основна' }).first().click();
+	await expect(page.getByText('Основна', { exact: true })).toHaveCount(1);
+	await expect(page.getByRole('button', { name: 'Направи основна' })).toHaveCount(2);
+	await page.getByLabel('Българско име').fill('Обикновена паричка');
+	await page.getByLabel('Описание').fill('Розетка от лъжичести листа.');
+	await page.getByRole('button', { name: 'Запази', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
+	await expect(page.getByText('Розетка от лъжичести листа.')).toBeVisible();
+	await page.getByRole('button', { name: 'Потвърди', exact: true }).click();
+	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
+	await gotoSettled(page, '/');
+	await page.getByLabel('Търси').fill('ОБИКНОВЕНА');
+	await expect(page.getByRole('link', { name: /Обикновена паричка/ })).toBeVisible();
+	await page.getByText('Непотвърдени').click();
+	await expect(page.getByText('Няма растения, които отговарят на търсенето.')).toBeVisible();
+});
+
+test('viewer can read but cannot change anything', async ({ page }) => {
+	await login(page, VIEWER);
+	await expect(page.getByRole('link', { name: '+ Растение' })).toHaveCount(0);
+	await page.getByRole('link', { name: /Обикновена паричка/ }).click();
+	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /Потвърди|Върни като непотвърдено/ })).toHaveCount(0);
+
+	const newPage = await page.goto('/plants/new');
+	expect(newPage?.status()).toBe(403);
+	const editPage = await page.goto(`${plantUrl}/edit`);
+	expect(editPage?.status()).toBe(403);
+
+	const post = await page.request.post(`${plantUrl}/edit?/update`, {
+		form: { scientific_name: 'Hacked', name_bg: 'Хакната' },
+		headers: { origin: 'http://localhost:5174' }
+	});
+	expect(post.status()).toBe(403);
+	const confirm = await page.request.post(`${plantUrl}?/unconfirm`, { form: {}, headers: { origin: 'http://localhost:5174' } });
+	expect(confirm.status()).toBe(403);
+
+	await gotoSettled(page, plantUrl);
+	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
+	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
+	await logout(page);
+});
+
+test('editor deletes the plant with all its photos', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, `${plantUrl}/edit`);
+	await page.getByRole('button', { name: 'Изтрий растението' }).click();
+	await page.getByRole('button', { name: 'Да, изтрий завинаги' }).click();
+	await expect(page.getByText('Още няма растения.')).toBeVisible();
+	const { count } = await adminClient().from('plant_photos').select('*', { count: 'exact', head: true });
+	expect(count).toBe(0);
+});
