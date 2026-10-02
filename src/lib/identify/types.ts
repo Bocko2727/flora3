@@ -65,6 +65,14 @@ export const identificationSchema = z
 
 export type IdentificationInput = z.output<typeof identificationSchema>;
 
+/** Body of POST /api/review/prepare: one Pl@ntNet result for one legacy plant (no choice yet). */
+export const reviewInputSchema = z.object({
+	plantId: z.string().uuid(),
+	modelVersion: z.string().max(100).nullable(),
+	photoCount: z.number().int().min(1).max(5),
+	candidates: z.array(candidateSchema).max(10)
+});
+
 export function parseIdentificationField(raw: FormDataEntryValue | null): IdentificationInput | null {
 	if (typeof raw !== 'string' || raw.trim() === '') return null;
 	let value: unknown;

@@ -201,3 +201,87 @@ export async function decideKeep(db: Db, identId: string): Promise<void> {
 	await pending(db, identId);
 	await decide(db, identId, { decision: 'kept' });
 }
+
+export type ReviewItem = {
+	identId: string;
+	plantId: string;
+	scientific_name: string;
+	name_bg: string;
+	photoPath: string | null;
+	thumbPath: string | null;
+	candidates: Candidate[];
+	kind: ReviewKind;
+	wiki: WikiInfo | null;
+	gbifMatch: string | null;
+};
+
+type PhotoRef = { path: string; thumb_path: string; is_primary: boolean };
+const primary = (photos: PhotoRef[]) => photos.find((p) => p.is_primary) ?? photos[0] ?? null;
+
+/** Legacy plants still to prepare (with a photo) and the review rows waiting for a decision. */
+export async function loadReview(db: Db): Promise<{
+	toPrepare: { id: string; photoPath: string }[];
+	items: ReviewItem[];
+	decided: number;
+}> {
+	const [legacy, reviews] = await Promise.all([
+		db
+			.from('plants')
+			.select('id, scientific_name, plant_photos(path, thumb_path, is_primary), identifications(source)')
+			.eq('name_source', 'legacy_ai')
+			.order('scientific_name'),
+		db
+			.from('identifications')
+			.select(
+				'id, decision, candidates, wiki, plants(id, scientific_name, name_bg, gbif_key, gbif_accepted_key, gbif_match, plant_photos(path, thumb_path, is_primary))'
+			)
+			.eq('source', 'review')
+	]);
+	if (legacy.error) throw new UserFacingError(describeDbError(legacy.error, 'Прегледът не можа да се зареди.'), legacy.error);
+	if (reviews.error) throw new UserFacingError(describeDbError(reviews.error, 'Прегледът не можа да се зареди.'), reviews.error);
+
+	const toPrepare = legacy.data.flatMap((plant) => {
+		if (plant.identifications.some((i) => i.source === 'review')) return [];
+		const photo = primary(plant.plant_photos);
+		return photo ? [{ id: plant.id, photoPath: photo.path }] : [];
+	});
+	let decided = 0;
+	const items: ReviewItem[] = [];
+	for (const row of reviews.data) {
+		if (row.decision !== null) {
+			decided += 1;
+			continue;
+		}
+		if (!row.plants) continue;
+		const candidates = row.candidates as unknown as Candidate[];
+		const photo = primary(row.plants.plant_photos);
+		items.push({
+			identId: row.id,
+			plantId: row.plants.id,
+			scientific_name: row.plants.scientific_name,
+			name_bg: row.plants.name_bg,
+			photoPath: photo?.path ?? null,
+			thumbPath: photo?.thumb_path ?? null,
+			candidates,
+			kind: classify(row.plants, candidates),
+			wiki: (row.wiki as unknown as WikiInfo | null) ?? null,
+			gbifMatch: row.plants.gbif_match
+		});
+	}
+	items.sort((a, b) => a.scientific_name.localeCompare(b.scientific_name));
+	return { toPrepare, items, decided };
+}
+
+/** Accepts every listed row that really is a match (with its Wikipedia text when there is one); returns how many. */
+export async function matchAllReview(db: Db, identIds: string[]): Promise<number> {
+	let done = 0;
+	for (const identId of identIds) {
+		try {
+			await decideMatch(db, identId, { useWikiName: false, useWikiText: true });
+			done += 1;
+		} catch (e) {
+			if (!(e instanceof UserFacingError)) throw e;
+		}
+	}
+	return done;
+}

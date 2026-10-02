@@ -4,7 +4,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/database.types';
 import { createPlant, updatePlant } from '$lib/server/plants';
-import { decideChange, decideKeep, decideMatch, prepareReview } from '$lib/server/review';
+import { decideChange, decideKeep, decideMatch, loadReview, matchAllReview, prepareReview } from '$lib/server/review';
+import { POST as preparePost } from '../../src/routes/api/review/prepare/+server';
+import { load as reviewLoad } from '../../src/routes/review/+page.server';
 import { EDITOR, VIEWER, adminClient, ensureUser, signedInClient } from '../helpers/supabase';
 
 const fixture = (name: string) => readFileSync(`tests/unit/fixtures/${name}`, 'utf8');
@@ -182,5 +184,67 @@ describe('review', () => {
 		expect((await plantRow(id)).description_source).toBe('manual');
 		await updatePlant(editor, id, { ...base('Myosotis arvensis'), description: null });
 		expect((await plantRow(id)).description_source).toBeNull();
+	});
+
+	it('matchAll records only real matches', async () => {
+		const good = await legacyPlant('Myosotis arvensis');
+		const bad = await legacyPlant('Myosotis sylvatica');
+		const fetchFn = routed({ 'species/match': gbifFor('Myosotis arvensis', 5341258), 'list=search': JSON.stringify({ query: { search: [] } }) });
+		await prepareReview(editor, good, { modelVersion: 'x', photoCount: 1, candidates: [cand('Myosotis arvensis', 0.8, 5341258)] }, fetchFn);
+		await prepareReview(
+			editor,
+			bad,
+			{ modelVersion: 'x', photoCount: 1, candidates: [cand('Myosotis arvensis', 0.8, 5341258)] },
+			routed({ 'species/match': gbifFor('Myosotis sylvatica', 5341270), 'list=search': JSON.stringify({ query: { search: [] } }) })
+		);
+		const ids = [(await reviewRow(good)).id, (await reviewRow(bad)).id];
+		expect(await matchAllReview(editor, ids)).toBe(1);
+		expect((await reviewRow(good)).decision).toBe('match');
+		expect((await reviewRow(bad)).decision).toBeNull();
+	});
+
+	it('loadReview lists legacy plants to prepare and pending items', async () => {
+		const id = await legacyPlant('Myosotis arvensis');
+		const ownerId = (await adminClient().from('plants').select('owner_id').eq('id', id).single()).data!.owner_id;
+		const photoId = randomUUID();
+		const { error: photoError } = await adminClient().from('plant_photos').insert({
+			id: photoId,
+			plant_id: id,
+			owner_id: ownerId,
+			path: `${ownerId}/${id}/${photoId}.jpg`,
+			thumb_path: `${ownerId}/${id}/${photoId}_thumb.jpg`,
+			mime: 'image/jpeg',
+			width: 10,
+			height: 10,
+			bytes: 10,
+			sha256: (randomUUID() + randomUUID()).replace(/-/g, '').slice(0, 64),
+			is_primary: true
+		});
+		expect(photoError).toBeNull();
+		const before = await loadReview(editor);
+		expect(before.toPrepare.map((p) => p.id)).toContain(id);
+		await prepareReview(editor, id, { modelVersion: 'x', photoCount: 1, candidates: [cand('Myosotis arvensis', 0.8, 5341258)] },
+			routed({ 'species/match': gbifFor('Myosotis arvensis', 5341258), 'list=search': JSON.stringify({ query: { search: [] } }) }));
+		const after = await loadReview(editor);
+		expect(after.toPrepare.map((p) => p.id)).not.toContain(id);
+		expect(after.items.find((i) => i.plantId === id)).toMatchObject({ kind: { kind: 'match', index: 0 }, photoPath: `${ownerId}/${id}/${photoId}.jpg` });
+	});
+
+	it('the prepare endpoint rejects viewers and invalid bodies', async () => {
+		const call = (db: SupabaseClient<Database>, userId: string, body: unknown) =>
+			preparePost({
+				request: new Request('http://x/api/review/prepare', { method: 'POST', body: JSON.stringify(body) }),
+				locals: { supabase: db, user: { id: userId } }
+			} as never);
+		const viewerId = (await viewer.auth.getUser()).data.user!.id;
+		const editorId = (await editor.auth.getUser()).data.user!.id;
+		await expect(call(viewer, viewerId, {})).rejects.toMatchObject({ status: 403 });
+		const res = await call(editor, editorId, { plantId: 'nope', photoCount: 9, candidates: 'x' });
+		expect(res.status).toBe(400);
+	});
+
+	it('the review page is a 404 for viewers', async () => {
+		const viewerId = (await viewer.auth.getUser()).data.user!.id;
+		await expect(reviewLoad({ locals: { supabase: viewer, user: { id: viewerId } } } as never)).rejects.toMatchObject({ status: 404 });
 	});
 });
