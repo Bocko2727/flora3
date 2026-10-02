@@ -1,10 +1,14 @@
 <script lang="ts">
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import type { IdStatus, NameSource } from '$lib/status';
+
 	type Props = {
 		plant: {
 			id: string;
 			name_bg: string;
 			scientific_name: string;
-			status: string;
+			id_status: IdStatus;
+			name_source: NameSource;
 			thumbUrl: string | null;
 			photoState: 'none' | 'ok' | 'failed';
 		};
@@ -27,9 +31,7 @@
 	<div class="text">
 		<strong class="name">{plant.name_bg}</strong>
 		<em class="latin muted">{plant.scientific_name}</em>
-		{#if plant.status === 'confirmed'}
-			<span class="badge confirmed">Потвърдено</span>
-		{/if}
+		<StatusBadge status={plant.id_status} nameSource={plant.name_source} />
 	</div>
 </a>
 

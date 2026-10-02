@@ -26,6 +26,10 @@ select throws_ok(
   $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000001', 'Bellis perennis', 'Паричка') $$,
   '42501', null, 'viewer cannot create plants');
 
+-- self-confirmation is gone
+select hasnt_column('public', 'plants', 'status', 'plants has no self-set status column');
+select hasnt_column('public', 'plants', 'confirmed_at', 'plants has no confirmed_at column');
+
 -- plants: editor inserts, owner defaults
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select lives_ok(
@@ -36,12 +40,6 @@ select is((select owner_id from public.plants where id = 'aaaaaaaa-0000-0000-000
 select throws_ok(
   $$ update public.plants set legacy_ai = '{"risks":"x"}' where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
   '42501', null, 'legacy_ai is not writable by app users');
-select throws_ok(
-  $$ update public.plants set status = 'confirmed' where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
-  '23514', null, 'confirmed status without confirmed_at is rejected');
-select lives_ok(
-  $$ update public.plants set status = 'confirmed', confirmed_at = now() where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
-  'editor can confirm a plant');
 
 -- plants: viewer reads, cannot update
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';

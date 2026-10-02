@@ -2,7 +2,6 @@ import type { Database } from '$lib/database.types';
 
 export type PlantRow = Database['public']['Tables']['plants']['Row'];
 export type PhotoRow = Database['public']['Tables']['plant_photos']['Row'];
-export type PlantStatus = 'unverified' | 'confirmed';
 
 export const LEGACY_AI_FIELDS = [
 	'recognition',

@@ -10,8 +10,9 @@
 	const visible = $derived(filterPlants(data.plants, query, status));
 	const options: { value: StatusFilter; label: string }[] = [
 		{ value: 'all', label: 'Всички' },
-		{ value: 'unverified', label: 'Непотвърдени' },
-		{ value: 'confirmed', label: 'Потвърдени' }
+		{ value: 'draft', label: 'Чернови' },
+		{ value: 'ai_gbif', label: 'Прието име' },
+		{ value: 'community', label: 'Потвърдени' }
 	];
 </script>
 

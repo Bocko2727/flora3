@@ -1,11 +1,10 @@
-import { error, fail } from '@sveltejs/kit';
-import { UserFacingError } from '$lib/errors';
-import { requireEditor } from '$lib/server/auth';
+import { error } from '@sveltejs/kit';
 import { toHttpError } from '$lib/server/http';
-import { getPlant, setPlantStatus } from '$lib/server/plants';
+import { getPlant } from '$lib/server/plants';
 import { signPaths } from '$lib/server/signed-urls';
-import { parseLegacyAi, type PlantStatus } from '$lib/types';
-import type { Actions, PageServerLoad } from './$types';
+import { isNameSource } from '$lib/status';
+import { parseLegacyAi } from '$lib/types';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const plant = await getPlant(locals.supabase, params.id).catch(toHttpError);
@@ -24,8 +23,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			description: fields.description,
 			habitat: fields.habitat,
 			notes: fields.notes,
-			status: fields.status,
-			confirmed_at: fields.confirmed_at
+			id_status: fields.id_status,
+			name_source: isNameSource(fields.name_source) ? fields.name_source : ('manual' as const)
 		},
 		legacy: parseLegacyAi(legacy_ai),
 		photos: photos.map((photo) => ({
@@ -37,22 +36,4 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			isPrimary: photo.is_primary
 		}))
 	};
-};
-
-async function changeStatus(locals: App.Locals, id: string, status: PlantStatus) {
-	await requireEditor(locals);
-	try {
-		await setPlantStatus(locals.supabase, id, status);
-	} catch (e) {
-		if (e instanceof UserFacingError) {
-			console.error(e.message, e.detail);
-			return fail(400, { message: e.message });
-		}
-		throw e;
-	}
-}
-
-export const actions: Actions = {
-	confirm: ({ locals, params }) => changeStatus(locals, params.id, 'confirmed'),
-	unconfirm: ({ locals, params }) => changeStatus(locals, params.id, 'unverified')
 };

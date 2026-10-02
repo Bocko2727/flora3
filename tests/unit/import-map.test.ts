@@ -26,7 +26,7 @@ const raw = {
 };
 
 describe('mapLegacyPlant', () => {
-	it('maps names, keeps the old id, and marks the plant unverified', () => {
+	it('maps names, keeps the old id, and marks the name as a legacy AI draft', () => {
 		const { plant } = mapLegacyPlant(raw, owner, at);
 		expect(plant).toMatchObject({
 			id: raw.id,
@@ -34,8 +34,7 @@ describe('mapLegacyPlant', () => {
 			name_bg: 'Лайка',
 			scientific_name: 'Matricaria chamomilla',
 			family: null,
-			status: 'unverified',
-			confirmed_at: null,
+			name_source: 'legacy_ai',
 			description: null,
 			habitat: null,
 			notes: null

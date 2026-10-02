@@ -107,7 +107,7 @@ test('duplicate photo is rejected and a rotated photo keeps portrait orientation
 	expect(data).toEqual([{ width: 300, height: 400 }]);
 });
 
-test('editor edits the plant, changes the primary photo and confirms it', async ({ page }) => {
+test('editor edits the plant, changes the primary photo and sees the draft status', async ({ page }) => {
 	await login(page, EDITOR);
 	await gotoSettled(page, `${plantUrl}/edit`);
 	const primaryIds = async () =>
@@ -133,12 +133,12 @@ test('editor edits the plant, changes the primary photo and confirms it', async 
 	await page.getByRole('button', { name: 'Запази', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByText('Розетка от лъжичести листа.')).toBeVisible();
-	await page.getByRole('button', { name: 'Потвърди', exact: true }).click();
-	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Потвърди', exact: true })).toHaveCount(0);
 	await gotoSettled(page, '/');
 	await page.getByLabel('Търси').fill('ОБИКНОВЕНА');
 	await expect(page.getByRole('link', { name: /Обикновена паричка/ })).toBeVisible();
-	await page.getByText('Непотвърдени').click();
+	await page.getByText('Прието име', { exact: true }).click();
 	await expect(page.getByText('Няма растения, които отговарят на търсенето.')).toBeVisible();
 });
 
@@ -149,6 +149,7 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /Потвърди|Върни като непотвърдено/ })).toHaveCount(0);
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 
 	const newPage = await page.goto('/plants/new');
 	expect(newPage?.status()).toBe(403);
@@ -161,13 +162,14 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	});
 	expect(post.status()).toBe(403);
 	const confirm = await page.request.post(`${plantUrl}?/unconfirm`, { form: {}, headers: { origin: 'http://localhost:5174' } });
-	expect(confirm.status()).toBe(403);
+	expect(confirm.status()).toBeGreaterThanOrEqual(400);
+	expect(confirm.status()).toBeLessThan(500);
 
 	await gotoSettled(page, plantUrl);
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
-	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
-	const stored = await adminClient().from('plants').select('name_bg, status').eq('id', plantId()).single();
-	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', status: 'confirmed' });
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+	const stored = await adminClient().from('plants').select('name_bg, name_source').eq('id', plantId()).single();
+	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', name_source: 'manual' });
 	await logout(page);
 });
 
