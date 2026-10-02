@@ -26,6 +26,7 @@ async function logout(page: Page) {
 test.describe.configure({ mode: 'serial' });
 
 let plantUrl = '';
+const plantId = () => plantUrl.split('/').pop()!;
 
 test('login rejects a wrong password and protects pages', async ({ page }) => {
 	await gotoSettled(page, '/');
@@ -36,6 +37,17 @@ test('login rejects a wrong password and protects pages', async ({ page }) => {
 	await expect(page.getByRole('alert')).toHaveText('Грешен имейл или парола.');
 	await login(page, EDITOR);
 	await expect(page.getByText('Още няма растения.')).toBeVisible();
+});
+
+test('login form keeps text typed before hydration', async ({ page }) => {
+	await page.goto('/login');
+	await page.getByLabel('Имейл').fill(EDITOR.email);
+	await page.waitForLoadState('networkidle');
+	await expect(page.getByLabel('Имейл')).toHaveValue(EDITOR.email);
+	await page.getByLabel('Парола').fill(EDITOR.password);
+	await page.getByRole('button', { name: 'Вход' }).click();
+	await expect(page.getByRole('heading', { name: 'Каталог' })).toBeVisible();
+	await logout(page);
 });
 
 test('editor adds a plant with two photos', async ({ page }) => {
@@ -49,9 +61,15 @@ test('editor adds a plant with two photos', async ({ page }) => {
 	plantUrl = new URL(page.url()).pathname;
 	await expect(page.getByRole('button', { name: /Отвори снимка \d от 2/ })).toHaveCount(2);
 
-	const { data } = await adminClient().from('plant_photos').select('is_primary, mime').eq('plant_id', plantUrl.split('/').pop()!);
+	const { data } = await adminClient()
+		.from('plant_photos')
+		.select('is_primary, mime, path, thumb_path')
+		.eq('plant_id', plantId());
+	expect(data?.length).toBe(2);
 	expect(data?.filter((p) => p.is_primary).length).toBe(1);
 	expect(data?.every((p) => p.mime === 'image/webp')).toBe(true);
+	const ext = (path: string) => path.slice(path.lastIndexOf('.'));
+	expect(data?.every((p) => ext(p.thumb_path) === ext(p.path))).toBe(true);
 });
 
 test('gallery opens full screen and closes with Escape', async ({ page }) => {
@@ -72,13 +90,19 @@ test('duplicate photo is rejected and a rotated photo keeps portrait orientation
 	await gotoSettled(page, `${plantUrl}/edit`);
 	await page.getByLabel('Добави снимки').setInputFiles([fixture('leaf-a.jpg')]);
 	await expect(page.getByText('Тази снимка вече е качена.')).toBeVisible({ timeout: 30_000 });
+	const admin = adminClient();
+	const rows = await admin.from('plant_photos').select('owner_id').eq('plant_id', plantId());
+	expect(rows.data?.length).toBe(2);
+	const folder = await admin.storage.from('photos').list(`${rows.data![0].owner_id}/${plantId()}`);
+	expect(folder.error).toBeNull();
+	expect(folder.data?.length).toBe(4);
 
 	await page.getByLabel('Добави снимки').setInputFiles([fixture('rotated.jpg')]);
 	await expect(page.getByText('Готово')).toBeVisible({ timeout: 30_000 });
 	const { data } = await adminClient()
 		.from('plant_photos')
 		.select('width, height')
-		.eq('plant_id', plantUrl.split('/').pop()!)
+		.eq('plant_id', plantId())
 		.eq('width', 300);
 	expect(data).toEqual([{ width: 300, height: 400 }]);
 });
@@ -86,9 +110,24 @@ test('duplicate photo is rejected and a rotated photo keeps portrait orientation
 test('editor edits the plant, changes the primary photo and confirms it', async ({ page }) => {
 	await login(page, EDITOR);
 	await gotoSettled(page, `${plantUrl}/edit`);
+	const primaryIds = async () =>
+		((await adminClient().from('plant_photos').select('id').eq('plant_id', plantId()).eq('is_primary', true)).data ?? []).map(
+			(r) => r.id
+		);
+	const before = await primaryIds();
+	expect(before.length).toBe(1);
 	await page.getByRole('button', { name: 'Направи основна' }).first().click();
+	await expect
+		.poll(async () => {
+			const now = await primaryIds();
+			return now.length === 1 && now[0] !== before[0];
+		})
+		.toBe(true);
 	await expect(page.getByText('Основна', { exact: true })).toHaveCount(1);
 	await expect(page.getByRole('button', { name: 'Направи основна' })).toHaveCount(2);
+	for (const button of await page.getByRole('button', { name: 'Направи основна' }).all()) {
+		await expect(button).toBeEnabled();
+	}
 	await page.getByLabel('Българско име').fill('Обикновена паричка');
 	await page.getByLabel('Описание').fill('Розетка от лъжичести листа.');
 	await page.getByRole('button', { name: 'Запази', exact: true }).click();
@@ -107,6 +146,7 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	await login(page, VIEWER);
 	await expect(page.getByRole('link', { name: '+ Растение' })).toHaveCount(0);
 	await page.getByRole('link', { name: /Обикновена паричка/ }).click();
+	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /Потвърди|Върни като непотвърдено/ })).toHaveCount(0);
 
@@ -126,6 +166,8 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	await gotoSettled(page, plantUrl);
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
+	const stored = await adminClient().from('plants').select('name_bg, status').eq('id', plantId()).single();
+	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', status: 'confirmed' });
 	await logout(page);
 });
 
@@ -135,6 +177,13 @@ test('editor deletes the plant with all its photos', async ({ page }) => {
 	await page.getByRole('button', { name: 'Изтрий растението' }).click();
 	await page.getByRole('button', { name: 'Да, изтрий завинаги' }).click();
 	await expect(page.getByText('Още няма растения.')).toBeVisible();
-	const { count } = await adminClient().from('plant_photos').select('*', { count: 'exact', head: true });
+	const admin = adminClient();
+	const { count } = await admin.from('plant_photos').select('*', { count: 'exact', head: true });
 	expect(count).toBe(0);
+	const { data: owner } = await admin.auth.admin.listUsers({ perPage: 1000 });
+	const ownerId = owner?.users.find((u) => u.email === EDITOR.email)?.id;
+	expect(ownerId).toBeTruthy();
+	const folder = await admin.storage.from('photos').list(`${ownerId}/${plantId()}`);
+	expect(folder.error).toBeNull();
+	expect(folder.data).toEqual([]);
 });
