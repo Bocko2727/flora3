@@ -287,6 +287,37 @@ test('identify button stays locked while AI is thinking', async ({ page }) => {
 	await logout(page);
 });
 
+test('status stamp text is at least 11px and stays inside the ring', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 780 });
+	await login(page, EDITOR);
+	const measure = () =>
+		page.locator('.stamp').evaluate((el) => {
+			const label = el.lastElementChild as HTMLElement;
+			return {
+				size: parseFloat(getComputedStyle(label).fontSize),
+				fits: el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight
+			};
+		});
+	await gotoSettled(page, aiPlantUrl);
+	expect(await measure()).toEqual({ size: expect.any(Number), fits: true });
+	expect((await measure()).size).toBeGreaterThanOrEqual(11);
+
+	// The longest label ("Потвърдено · iNaturalist") is the hardest case.
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const plant = await admin.from('plants').select('scientific_name').eq('id', id).single();
+	await admin
+		.from('plants')
+		.update({ inat_quality_grade: 'research', inat_taxon_name: plant.data!.scientific_name, inat_observation_id: 1 })
+		.eq('id', id);
+	await gotoSettled(page, aiPlantUrl);
+	await expect(page.locator('.stamp')).toContainText('Потвърдено');
+	const community = await measure();
+	expect(community.fits).toBe(true);
+	expect(community.size).toBeGreaterThanOrEqual(11);
+	await logout(page);
+});
+
 test('a missing AI configuration is explained and the plant still saves', async ({ page }) => {
 	await page.route(IDENTIFY_URL, (route) =>
 		route.fulfill({

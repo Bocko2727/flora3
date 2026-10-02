@@ -164,8 +164,8 @@
 	.stamp {
 		grid-column: 2;
 		grid-row: 3;
-		width: 72px;
-		height: 72px;
+		width: 88px;
+		height: 88px;
 		margin: -0.75rem var(--space-2) 0 0;
 		border-radius: 50%;
 		border: 1.5px solid var(--accent);
@@ -175,7 +175,7 @@
 		padding: 3px;
 		text-align: center;
 		font-family: var(--font-display);
-		font-size: 0.625rem;
+		font-size: var(--text-xs);
 		font-weight: 600;
 		line-height: 1.1;
 		letter-spacing: -0.01em;
@@ -184,7 +184,7 @@
 	}
 	.stamp.draft { border-style: dashed; }
 	/* The longest label needs a smaller size to clear the ring. */
-	.stamp.community span:last-child { font-size: 0.5625rem; }
+	.stamp.community span:last-child { font-size: 0.6875rem; }
 	.stamp.community { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
 	.explain { grid-column: 1; grid-row: 3; align-self: center; font-size: var(--text-sm); margin: var(--space-2) 0 0; }
 
