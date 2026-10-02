@@ -15,7 +15,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			name_bg: plant.name_bg,
 			scientific_name: plant.scientific_name,
 			status: plant.status,
-			thumbUrl: plant.primaryThumbPath ? (urls.get(plant.primaryThumbPath) ?? null) : null
+			thumbUrl: plant.primaryThumbPath ? (urls.get(plant.primaryThumbPath) ?? null) : null,
+			photoState: !plant.primaryThumbPath
+				? ('none' as const)
+				: urls.get(plant.primaryThumbPath)
+					? ('ok' as const)
+					: ('failed' as const)
 		}))
 	};
 };
