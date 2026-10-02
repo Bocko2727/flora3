@@ -84,7 +84,9 @@ export async function createPlant(
 	input: PlantFormData,
 	nameSource: NameSource = 'manual'
 ): Promise<void> {
-	const { error } = await db.from('plants').insert({ id, ...input, name_source: nameSource });
+	const { error } = await db
+		.from('plants')
+		.insert({ id, ...input, name_source: nameSource, description_source: input.description ? 'manual' : null });
 	if (error) throw new UserFacingError(describeDbError(error, 'Растението не можа да се запише.'), error);
 }
 
@@ -104,10 +106,14 @@ export async function updatePlant(
 	nameSource?: NameSource,
 	clearGbifEvidence = false
 ): Promise<void> {
+	// A Wikipedia text keeps its label until the owner actually changes it.
+	const { data: current } = await db.from('plants').select('description').eq('id', id).maybeSingle();
+	const descriptionChanged = (current?.description ?? null) !== (input.description ?? null);
 	const { data, error } = await db
 		.from('plants')
 		.update({
 			...input,
+			...(descriptionChanged ? { description_source: input.description ? 'manual' : null, wiki_url: null } : {}),
 			...(nameSource ? { name_source: nameSource } : {}),
 			...(clearGbifEvidence ? CLEARED_GBIF_EVIDENCE : {})
 		})
