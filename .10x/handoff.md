@@ -1,5 +1,5 @@
-# Handoff
-От: SDE (задачи 1–7) → SDE (задача 8: документация) → QA + Security (Phase 5).
-- Какво да се тества: поток добавяне със снимка (AI панел), статуси, GBIF/iNat действия, каталог 6/12, права на зрителя.
-- Ledger с отложени бележки: `.superpowers/sdd/2026-10-02-flora3-ai-statuses-redesign/progress.md`.
-- ADR-001.
+# Handoff → DevOps (чака собственика)
+- Код и документация са готови на `feat/ai-statuses-redesign`. Нищо не е push-нато.
+- Ред за пускане: `.10x/decisions/devops/ai-statuses-redesign.md`; SQL и връщане назад: README → „Миграции на хостнатия проект“.
+- След deploy: 3 ръчни проверки от `.10x/reviews/2026-10-02-qa-report.md`.
+- Приет риск за security: `.10x/reviews/2026-10-02-security-review.md`.
