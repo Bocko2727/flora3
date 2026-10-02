@@ -432,14 +432,19 @@ test('editor reviews legacy plants', async ({ page }) => {
 	await page.getByRole('button', { name: 'Потвърди' }).click();
 	await expect(page.getByRole('heading', { name: /Съвпадат/ })).toBeHidden();
 
-	await page.getByRole('button', { name: 'Остави старото' }).click();
+	const item = (name: string) => page.getByRole('article').filter({ hasText: name });
+	await item('Aster amellus').getByRole('button', { name: 'Остави старото' }).click();
 	await expect(page.getByRole('heading', { name: /Не съвпадат/ })).toBeHidden();
+	await item('Crocus sp.').getByRole('button', { name: 'Остави старото' }).click();
+	await expect(page.getByRole('heading', { name: /Без резултат/ })).toBeHidden();
+	await expect(page.getByText('Няма нищо за преглед.')).toBeVisible();
 
 	const admin = adminClient();
 	const decisions = await admin.from('identifications').select('plant_id, decision').eq('source', 'review');
 	expect(decisions.data).toHaveLength(3);
 	expect(decisions.data!.find((d) => d.plant_id === bellis)?.decision).toBe('match');
 	expect(decisions.data!.find((d) => d.plant_id === aster)?.decision).toBe('kept');
+	expect(decisions.data!.filter((d) => d.decision === 'kept')).toHaveLength(2);
 
 	await gotoSettled(page, `/plants/${bellis}`);
 	await expect(page.locator('.stamp')).toContainText('AI · прието име');

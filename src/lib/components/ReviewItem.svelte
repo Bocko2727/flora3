@@ -77,7 +77,7 @@
 	</div>
 
 	{#if item.kind.kind === 'none'}
-		<p class="muted">Pl@ntNet не разпозна растението. Остава чернова.</p>
+		<p class="muted">Pl@ntNet не разпозна растението. Той разпознава само растения — гъби и лишеи се проверяват ръчно. Името остава чернова.</p>
 	{:else}
 		<ol class="candidates">
 			{#each top as candidate, i (i)}
@@ -145,6 +145,8 @@
 				</div>
 			</form>
 		{/if}
+	{/if}
+	{#if item.kind.kind !== 'match'}
 		<form method="POST" action="?/keep" use:enhance={submit}>
 			<input type="hidden" name="identId" value={item.identId} />
 			<button type="submit" disabled={busy}>Остави старото</button>
