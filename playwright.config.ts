@@ -12,6 +12,7 @@ export default defineConfig({
 		command: 'npm run dev',
 		url: 'http://localhost:5174/login',
 		reuseExistingServer: true,
+		env: { FLORA_OFFLINE_EXTERNAL: '1' },
 		timeout: 120_000
 	}
 });

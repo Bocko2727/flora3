@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { untrack } from 'svelte';
+	import AiSuggestions from '$lib/components/AiSuggestions.svelte';
 	import PhotoManager from '$lib/components/PhotoManager.svelte';
 	import PhotoUploader from '$lib/components/PhotoUploader.svelte';
 	import PlantForm from '$lib/components/PlantForm.svelte';
+	import { IDENTIFY_MAX_IMAGES } from '$lib/identify/client';
+	import type { Candidate, IdentifyOk } from '$lib/identify/types';
+	import type { PlantFormValues } from '$lib/schemas/plant';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -11,12 +16,83 @@
 	let confirmDelete = $state(false);
 	let deleting = $state(false);
 	let lastAction = $state<'update' | 'delete' | null>(null);
+
+	let values = $state<PlantFormValues>(untrack(() => ({ ...data.values })));
+	let sources = $state<Blob[]>([]);
+	let runKey = $state(0);
+	let ident = $state<IdentifyOk | null>(null);
+	let identPhotoCount = $state(1);
+	let pickedIndex = $state<number | null>(null);
+	let fetchingPhotos = $state(false);
+
+	/** Newest photos first, up to the identify limit; the saved (full-size) version is downscaled in the browser. */
+	async function identifyPhotos() {
+		if (fetchingPhotos) return;
+		fetchingPhotos = true;
+		try {
+			const newest = [...data.photos]
+				.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+				.filter((photo) => photo.url)
+				.slice(0, IDENTIFY_MAX_IMAGES);
+			const blobs: Blob[] = [];
+			for (const photo of newest) {
+				try {
+					const response = await fetch(photo.url!);
+					if (!response.ok) throw new Error(`HTTP ${response.status}`);
+					blobs.push(await response.blob());
+				} catch (e) {
+					console.warn('Снимка пропусната при разпознаване:', e);
+				}
+			}
+			sources = blobs;
+			runKey += 1;
+		} finally {
+			fetchingPhotos = false;
+		}
+	}
+
+	function pickCandidate(candidate: Candidate, index: number) {
+		values.scientific_name = candidate.scientific_name;
+		if (candidate.family) values.family = candidate.family;
+		pickedIndex = index;
+	}
+
+	function receive(result: IdentifyOk | null) {
+		ident = result;
+		identPhotoCount = Math.min(Math.max(sources.length, 1), IDENTIFY_MAX_IMAGES);
+		if (!result) pickedIndex = null;
+	}
+
+	const identificationJson = $derived(
+		ident && ident.candidates.length > 0
+			? JSON.stringify({
+					modelVersion: ident.modelVersion,
+					photoCount: identPhotoCount,
+					candidates: ident.candidates,
+					chosenIndex: pickedIndex
+				})
+			: ''
+	);
 </script>
 
 <svelte:head><title>Редакция · {data.plant.name_bg} · Флора</title></svelte:head>
 
 <p><a href={`/plants/${data.plant.id}`}>← Към растението</a></p>
 <h1>Редакция: {data.plant.name_bg}</h1>
+
+{#if data.photos.length > 0}
+	<button type="button" disabled={fetchingPhotos} onclick={() => void identifyPhotos()}>
+		{fetchingPhotos ? 'Зареждане на снимките…' : 'Разпознай по снимките'}
+	</button>
+{/if}
+<AiSuggestions
+	{sources}
+	{runKey}
+	onpick={pickCandidate}
+	onresult={receive}
+	{pickedIndex}
+	onretry={() => void identifyPhotos()}
+/>
 
 <form
 	method="POST"
@@ -31,7 +107,8 @@
 		};
 	}}
 >
-	<PlantForm initial={data.values} errors={form?.errors ?? {}} legacy={data.legacy} />
+	<input type="hidden" name="identification" value={identificationJson} />
+	<PlantForm initial={data.values} bind:values errors={form?.errors ?? {}} legacy={data.legacy} />
 	{#if form?.message && lastAction !== 'delete'}<p class="error" role="alert">{form.message}</p>{/if}
 	<div class="row">
 		<button type="submit" class="primary" disabled={saving}>{saving ? 'Записване…' : 'Запази'}</button>
@@ -42,7 +119,14 @@
 <section class="stack">
 	<h2>Снимки</h2>
 	<PhotoManager photos={data.photos} />
-	<PhotoUploader plantId={data.plant.id} ownerId={data.user?.id ?? ''} onsettled={() => void invalidateAll()} />
+	<PhotoUploader
+		plantId={data.plant.id}
+		ownerId={data.user?.id ?? ''}
+		onsettled={async (summary) => {
+			await invalidateAll();
+			if (summary.done >= 1) await identifyPhotos();
+		}}
+	/>
 </section>
 
 <section class="stack danger-zone">

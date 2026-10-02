@@ -1,0 +1,24 @@
+{
+	"ok": true,
+	"modelVersion": "2025-01-17 (7.3)",
+	"candidates": [
+		{
+			"scientific_name": "Bellis perennis",
+			"authorship": "L.",
+			"family": "Asteraceae",
+			"genus": "Bellis",
+			"common_names": ["Паричка"],
+			"score": 0.71,
+			"gbif_key": 3117813
+		},
+		{
+			"scientific_name": "Bellis sylvestris",
+			"authorship": "Cirillo",
+			"family": "Asteraceae",
+			"genus": "Bellis",
+			"common_names": [],
+			"score": 0.12,
+			"gbif_key": 3117819
+		}
+	]
+}

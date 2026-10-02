@@ -23,7 +23,20 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "editors": {
+            "api_usage": {
+                  Row: {
+                    "count": number,"day": string,"user_id": string
+                  }
+                  Insert: {
+                    "count"?: number,"day": string,"user_id": string
+                  }
+                  Update: {
+                    "count"?: number,"day"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"editors": {
                   Row: {
                     "user_id": string
                   }
@@ -35,6 +48,25 @@ export type Database = {
                   }
                   Relationships: [
                     
+                  ]
+                },"identifications": {
+                  Row: {
+                    "candidates": NonNullable<Json>,"chosen_index": number | null,"created_at": string,"id": string,"model_version": string | null,"owner_id": string,"photo_count": number,"plant_id": string,"provider": string
+                  }
+                  Insert: {
+                    "candidates": NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count": number,"plant_id": string,"provider"?: string
+                  }
+                  Update: {
+                    "candidates"?: NonNullable<Json>,"chosen_index"?: number | null,"created_at"?: string,"id"?: string,"model_version"?: string | null,"owner_id"?: string,"photo_count"?: number,"plant_id"?: string,"provider"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "identifications_plant_id_fkey"
+      columns: ["plant_id"]
+isOneToOne: false
+      referencedRelation: "plants"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"plant_photos": {
                   Row: {
@@ -57,13 +89,13 @@ isOneToOne: false
                   ]
                 },"plants": {
                   Row: {
-                    "confirmed_at": string | null,"created_at": string,"description": string | null,"family": string | null,"habitat": string | null,"id": string,"legacy_ai": Json | null,"name_bg": string,"notes": string | null,"owner_id": string,"scientific_name": string,"status": string,"updated_at": string
+                    "created_at": string,"description": string | null,"family": string | null,"gbif_accepted_key": number | null,"gbif_accepted_name": string | null,"gbif_checked_at": string | null,"gbif_key": number | null,"gbif_match": string | null,"habitat": string | null,"id": string,"inat_checked_at": string | null,"inat_observation_id": number | null,"inat_quality_grade": string | null,"inat_taxon_name": string | null,"legacy_ai": Json | null,"name_bg": string,"name_source": string,"notes": string | null,"owner_id": string,"scientific_name": string,"updated_at": string,"id_status": string | null
                   }
                   Insert: {
-                    "confirmed_at"?: string | null,"created_at"?: string,"description"?: string | null,"family"?: string | null,"habitat"?: string | null,"id": string,"legacy_ai"?: Json | null,"name_bg": string,"notes"?: string | null,"owner_id"?: string,"scientific_name": string,"status"?: string,"updated_at"?: string
+                    "created_at"?: string,"description"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id": string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg": string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name": string,"updated_at"?: string
                   }
                   Update: {
-                    "confirmed_at"?: string | null,"created_at"?: string,"description"?: string | null,"family"?: string | null,"habitat"?: string | null,"id"?: string,"legacy_ai"?: Json | null,"name_bg"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name"?: string,"status"?: string,"updated_at"?: string
+                    "created_at"?: string,"description"?: string | null,"family"?: string | null,"gbif_accepted_key"?: number | null,"gbif_accepted_name"?: string | null,"gbif_checked_at"?: string | null,"gbif_key"?: number | null,"gbif_match"?: string | null,"habitat"?: string | null,"id"?: string,"inat_checked_at"?: string | null,"inat_observation_id"?: number | null,"inat_quality_grade"?: string | null,"inat_taxon_name"?: string | null,"legacy_ai"?: Json | null,"name_bg"?: string,"name_source"?: string,"notes"?: string | null,"owner_id"?: string,"scientific_name"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -74,10 +106,16 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "delete_plant":
+            "consume_identify_quota":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"delete_plant":
 { Args: { "target_plant": string }; Returns: {
               "path": string,"thumb_path": string
             }[]
+                           },
+"id_status":
+{ Args: { "p": Database["public"]['Tables']["plants"]['Row'] }; Returns: string
                            },
 "is_editor":
 { Args: Record<PropertyKey, never>; Returns: boolean

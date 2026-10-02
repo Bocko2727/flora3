@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { EDITOR, VIEWER, adminClient, type TestUser } from '../helpers/supabase';
+import { EDITOR, VIEWER, adminClient, ensureUser, resetCatalog, type TestUser } from '../helpers/supabase';
 
 const fixture = (name: string) => `tests/e2e/fixtures/${name}`;
 
@@ -55,7 +57,7 @@ test('editor adds a plant with two photos', async ({ page }) => {
 	await page.getByRole('link', { name: '+ Растение' }).click();
 	await page.getByLabel('Българско име').fill('Паричка');
 	await page.getByLabel('Латинско име').fill('Bellis perennis');
-	await page.getByLabel('Снимки (по желание)').setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
 	await page.getByRole('button', { name: 'Запази растението' }).click();
 	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
 	plantUrl = new URL(page.url()).pathname;
@@ -107,7 +109,7 @@ test('duplicate photo is rejected and a rotated photo keeps portrait orientation
 	expect(data).toEqual([{ width: 300, height: 400 }]);
 });
 
-test('editor edits the plant, changes the primary photo and confirms it', async ({ page }) => {
+test('editor edits the plant, changes the primary photo and sees the draft status', async ({ page }) => {
 	await login(page, EDITOR);
 	await gotoSettled(page, `${plantUrl}/edit`);
 	const primaryIds = async () =>
@@ -133,13 +135,26 @@ test('editor edits the plant, changes the primary photo and confirms it', async 
 	await page.getByRole('button', { name: 'Запази', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByText('Розетка от лъжичести листа.')).toBeVisible();
-	await page.getByRole('button', { name: 'Потвърди', exact: true }).click();
-	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Потвърди', exact: true })).toHaveCount(0);
 	await gotoSettled(page, '/');
 	await page.getByLabel('Търси').fill('ОБИКНОВЕНА');
 	await expect(page.getByRole('link', { name: /Обикновена паричка/ })).toBeVisible();
-	await page.getByText('Непотвърдени').click();
+	await page.getByText('Прието име', { exact: true }).click();
 	await expect(page.getByText('Няма растения, които отговарят на търсенето.')).toBeVisible();
+});
+
+test('editor sees the evidence panel with name check and iNaturalist link', async ({ page }) => {
+	await login(page, EDITOR);
+	await gotoSettled(page, plantUrl);
+	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
+	await expect(page.getByText('Името не е проверено в GBIF.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toBeVisible();
+	await expect(page.getByLabel('Линк към наблюдение в iNaturalist')).toBeVisible();
+	// e2e runs with FLORA_OFFLINE_EXTERNAL=1, so GBIF is unreachable and the failure is reported without writing.
+	await page.getByRole('button', { name: 'Провери името в GBIF' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Името не можа да се провери в GBIF.');
+	await logout(page);
 });
 
 test('viewer can read but cannot change anything', async ({ page }) => {
@@ -148,7 +163,11 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	await page.getByRole('link', { name: /Обикновена паричка/ }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toHaveCount(0);
+	await expect(page.getByLabel('Линк към наблюдение в iNaturalist')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: /Потвърди|Върни като непотвърдено/ })).toHaveCount(0);
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 
 	const newPage = await page.goto('/plants/new');
 	expect(newPage?.status()).toBe(403);
@@ -161,13 +180,14 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	});
 	expect(post.status()).toBe(403);
 	const confirm = await page.request.post(`${plantUrl}?/unconfirm`, { form: {}, headers: { origin: 'http://localhost:5174' } });
-	expect(confirm.status()).toBe(403);
+	expect(confirm.status()).toBeGreaterThanOrEqual(400);
+	expect(confirm.status()).toBeLessThan(500);
 
 	await gotoSettled(page, plantUrl);
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
-	await expect(page.getByText('Потвърдено', { exact: true })).toBeVisible();
-	const stored = await adminClient().from('plants').select('name_bg, status').eq('id', plantId()).single();
-	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', status: 'confirmed' });
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+	const stored = await adminClient().from('plants').select('name_bg, name_source').eq('id', plantId()).single();
+	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', name_source: 'manual' });
 	await logout(page);
 });
 
@@ -186,4 +206,148 @@ test('editor deletes the plant with all its photos', async ({ page }) => {
 	const folder = await admin.storage.from('photos').list(`${ownerId}/${plantId()}`);
 	expect(folder.error).toBeNull();
 	expect(folder.data).toEqual([]);
+});
+
+const IDENTIFY_URL = '**/api/identify';
+const identifyOk = readFileSync('tests/e2e/fixtures/identify-ok.json', 'utf8');
+let aiPlantUrl = '';
+
+test('AI suggestions fill the name when adding a plant and are stored with the plant', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg')]);
+	await expect(page.getByText('Bellis perennis')).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('71 %')).toBeVisible();
+	await expect(page.getByText('Разпознаването използва Pl@ntNet API.')).toBeVisible();
+
+	await page.getByRole('button', { name: /Bellis perennis/ }).click();
+	await expect(page.getByLabel('Латинско име')).toHaveValue('Bellis perennis');
+	await expect(page.getByLabel('Семейство')).toHaveValue('Asteraceae');
+	await page.getByLabel('Българско име').fill('Паричка');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+
+	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
+	aiPlantUrl = new URL(page.url()).pathname;
+	// e2e runs with FLORA_OFFLINE_EXTERNAL=1, so GBIF cannot confirm the name: AI draft, not AI + GBIF.
+	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
+
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const stored = await admin.from('identifications').select('chosen_index, photo_count, candidates').eq('plant_id', id);
+	expect(stored.data).toHaveLength(1);
+	expect(stored.data?.[0]).toMatchObject({ chosen_index: 0, photo_count: 1 });
+	expect((stored.data?.[0].candidates as unknown[]).length).toBe(2);
+	const plant = await admin.from('plants').select('name_source, scientific_name').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'ai', scientific_name: 'Bellis perennis' });
+});
+
+test('AI suggestions can be requested from the saved photos when editing', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk })
+	);
+	await login(page, EDITOR);
+	await gotoSettled(page, `${aiPlantUrl}/edit`);
+	await page.getByRole('button', { name: 'Разпознай по снимките' }).click();
+	await expect(page.getByText('Bellis sylvestris')).toBeVisible({ timeout: 30_000 });
+	await page.getByRole('button', { name: /Bellis sylvestris/ }).click();
+	await expect(page.getByLabel('Латинско име')).toHaveValue('Bellis sylvestris');
+	await page.getByRole('button', { name: 'Запази', exact: true }).click();
+	await expect(page.getByText('Bellis sylvestris').first()).toBeVisible();
+	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
+
+	const id = aiPlantUrl.split('/').pop()!;
+	const admin = adminClient();
+	const rows = await admin.from('identifications').select('chosen_index').eq('plant_id', id);
+	expect(rows.data).toHaveLength(2);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'ai' });
+	await logout(page);
+});
+
+test('a missing AI configuration is explained and the plant still saves', async ({ page }) => {
+	await page.route(IDENTIFY_URL, (route) =>
+		route.fulfill({
+			status: 503,
+			contentType: 'application/json',
+			body: JSON.stringify({ ok: false, code: 'not_configured', message: 'AI разпознаването не е настроено.' })
+		})
+	);
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-b.jpg')]);
+	await expect(page.getByText('AI разпознаването не е настроено.')).toBeVisible({ timeout: 30_000 });
+	await page.getByLabel('Българско име').fill('Маргаритка');
+	await page.getByLabel('Латинско име').fill('Leucanthemum vulgare');
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Маргаритка' })).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
+
+	const id = new URL(page.url()).pathname.split('/').pop()!;
+	const admin = adminClient();
+	const { count } = await admin.from('identifications').select('*', { count: 'exact', head: true }).eq('plant_id', id);
+	expect(count).toBe(0);
+	const plant = await admin.from('plants').select('name_source').eq('id', id).single();
+	expect(plant.data).toEqual({ name_source: 'manual' });
+	await logout(page);
+});
+
+// Runs last: the first test above expects an empty catalog, so this block starts from a clean
+// catalog of its own and removes its plants afterwards.
+test.describe('catalog pages of 6 / 12', () => {
+	const ids: string[] = [];
+	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
+	const pages = (page: Page) => page.getByRole('navigation', { name: 'Страници' });
+
+	test.beforeAll(async () => {
+		await resetCatalog();
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		const rows = Array.from({ length: 13 }, (_, i) => {
+			const n = String(i + 1).padStart(2, '0');
+			return { id: randomUUID(), name_bg: `Тест ${n}`, scientific_name: `Testus ${n}`, owner_id: ownerId };
+		});
+		const { error } = await adminClient().from('plants').insert(rows);
+		if (error) throw error;
+		ids.push(...rows.map((row) => row.id));
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().in('id', ids);
+		if (error) throw error;
+	});
+
+	test('shows 6 or 12 plants per page and keeps the page in the URL', async ({ page }) => {
+		await login(page, EDITOR);
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(14, 23, 20)');
+
+		await gotoSettled(page, '/?n=6');
+		await expect(cards(page)).toHaveCount(6);
+		await expect(pages(page).getByRole('link', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
+		await expect(pages(page).getByRole('link', { name: '2', exact: true })).not.toHaveAttribute('aria-current');
+
+		await pages(page).getByRole('link', { name: '3', exact: true }).click();
+		await expect(cards(page)).toHaveCount(1);
+		await expect(page).toHaveURL(/[?&]p=3/);
+		await expect(cards(page).first()).toContainText('Тест 13');
+
+		await pages(page).getByRole('link', { name: '12', exact: true }).click();
+		await expect(cards(page)).toHaveCount(12);
+		await expect(page).toHaveURL(/[?&]n=12/);
+		await expect(page).not.toHaveURL(/[?&]p=/);
+
+		await pages(page).getByRole('link', { name: '2', exact: true }).click();
+		await expect(page).toHaveURL(/[?&]p=2/);
+		await page.getByLabel('Търси').fill('Тест 13');
+		await expect(page).not.toHaveURL(/[?&]p=/);
+		await expect(page).toHaveURL(/[?&]q=/);
+		await expect(cards(page)).toHaveCount(1);
+		await expect(cards(page).first()).toContainText('Тест 13');
+		await expect(page.getByLabel('Търси')).toHaveValue('Тест 13');
+
+		await gotoSettled(page, '/?p=99');
+		await expect(cards(page)).toHaveCount(1);
+		await expect(pages(page).getByRole('link', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
+	});
 });

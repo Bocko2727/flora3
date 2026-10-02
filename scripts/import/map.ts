@@ -51,8 +51,7 @@ export function mapLegacyPlant(
 			description: null,
 			habitat: null,
 			notes: null,
-			status: 'unverified',
-			confirmed_at: null,
+			name_source: 'legacy_ai',
 			legacy_ai: legacyAi
 		},
 		photoUrls: [...new Set(legacy.photos.map((url) => url.trim()).filter(Boolean))]

@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/database.types';
 import { UserFacingError } from '$lib/errors';
-import { createPlant, deletePlant, getPlant, listPlants, setPlantStatus, updatePlant } from '$lib/server/plants';
+import { createPlant, deletePlant, getPlant, insertIdentification, listPlants, updatePlant } from '$lib/server/plants';
+import { refreshNameCheck } from '$lib/server/verification';
 import { EDITOR, VIEWER, adminClient, ensureUser, resetCatalog, signedInClient } from '../helpers/supabase';
 
 const base = { scientific_name: 'Bellis perennis', name_bg: 'Паричка', family: 'Asteraceae', description: null, habitat: null, notes: null };
@@ -24,27 +26,90 @@ beforeEach(async () => {
 });
 
 describe('plant service', () => {
-	it('lets the editor create, read, update, confirm, unconfirm and delete a plant', async () => {
+	it('lets the editor create, read, update and delete a plant, which starts as a manual draft', async () => {
 		const id = randomUUID();
 		await createPlant(editor, id, base);
 
 		expect(await listPlants(editor)).toEqual([
-			{ id, scientific_name: 'Bellis perennis', name_bg: 'Паричка', status: 'unverified', primaryThumbPath: null }
+			{
+				id,
+				scientific_name: 'Bellis perennis',
+				name_bg: 'Паричка',
+				family: 'Asteraceae',
+				name_source: 'manual',
+				id_status: 'draft',
+				primaryThumbPath: null
+			}
 		]);
 
 		await updatePlant(editor, id, { ...base, name_bg: 'Обикновена паричка' });
-		expect((await getPlant(editor, id))?.name_bg).toBe('Обикновена паричка');
-
-		await setPlantStatus(editor, id, 'confirmed');
-		const confirmed = await getPlant(editor, id);
-		expect(confirmed?.status).toBe('confirmed');
-		expect(confirmed?.confirmed_at).not.toBeNull();
-
-		await setPlantStatus(editor, id, 'unverified');
-		expect((await getPlant(editor, id))?.confirmed_at).toBeNull();
+		const updated = await getPlant(editor, id);
+		expect(updated?.name_bg).toBe('Обикновена паричка');
+		expect(updated?.id_status).toBe('draft');
 
 		await deletePlant(editor, id);
 		expect(await getPlant(editor, id)).toBeNull();
+	});
+
+	it('records an AI name source on create and keeps it when updating without one', async () => {
+		const id = randomUUID();
+		await createPlant(editor, id, base, 'ai');
+		expect((await listPlants(editor))[0]).toMatchObject({ id, name_source: 'ai', id_status: 'draft' });
+
+		await updatePlant(editor, id, { ...base, description: 'Розетка.' });
+		const kept = await getPlant(editor, id);
+		expect(kept?.name_source).toBe('ai');
+		expect(kept?.description).toBe('Розетка.');
+
+		await updatePlant(editor, id, base, 'manual');
+		expect((await getPlant(editor, id))?.name_source).toBe('manual');
+	});
+
+	it('stores an identification and reaches ai_gbif once GBIF confirms the AI-chosen name', async () => {
+		const id = randomUUID();
+		const name = 'Myosotis arvensis';
+		await createPlant(editor, id, { ...base, scientific_name: name }, 'ai');
+		await insertIdentification(editor, id, {
+			modelVersion: '2025-01-17 (7.3)',
+			photoCount: 2,
+			candidates: [
+				{ scientific_name: name, authorship: '(L.) Hill', family: 'Boraginaceae', genus: 'Myosotis', common_names: [], score: 0.62, gbif_key: 5341258 }
+			],
+			chosenIndex: 0
+		});
+		expect(await getPlant(editor, id)).toMatchObject({ id_status: 'draft', latestIdentification: { chosen_index: 0, model_version: '2025-01-17 (7.3)' } });
+
+		const fetchFn = vi.fn<typeof fetch>(
+			async () =>
+				new Response(readFileSync('tests/unit/fixtures/gbif-match-accepted.json', 'utf8'), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+		);
+		expect(await refreshNameCheck(editor, id, name, fetchFn)).toBe(true);
+		const plant = await getPlant(editor, id);
+		expect(plant).toMatchObject({ id_status: 'ai_gbif', name_source: 'ai', latestIdentification: { candidates: [{ score: 0.62 }] } });
+		const { count } = await adminClient().from('identifications').select('*', { count: 'exact', head: true }).eq('plant_id', id);
+		expect(count).toBe(1);
+	});
+
+	it('refuses an identification from a viewer', async () => {
+		const id = randomUUID();
+		await createPlant(editor, id, base);
+		await expect(
+			insertIdentification(viewer, id, { modelVersion: null, photoCount: 1, candidates: [], chosenIndex: null })
+		).rejects.toBeInstanceOf(UserFacingError);
+	});
+
+	it('drops stale GBIF evidence when the name changes, so a failed re-check cannot leave it behind', async () => {
+		const id = randomUUID();
+		await createPlant(editor, id, base);
+		await adminClient()
+			.from('plants')
+			.update({ gbif_match: 'accepted', gbif_key: 1, gbif_checked_at: new Date().toISOString() })
+			.eq('id', id);
+		await updatePlant(editor, id, { ...base, scientific_name: 'Bellis sylvestris' }, 'manual', true);
+		expect(await getPlant(editor, id)).toMatchObject({ scientific_name: 'Bellis sylvestris', gbif_match: null, gbif_key: null, gbif_checked_at: null });
 	});
 
 	it('returns the primary photo thumb in the list and photos ordered primary-first', async () => {
@@ -87,12 +152,11 @@ describe('plant service', () => {
 			new UserFacingError('Нямаш права за това действие.')
 		);
 		await expect(updatePlant(viewer, id, { ...base, name_bg: 'X' })).rejects.toBeInstanceOf(UserFacingError);
-		await expect(setPlantStatus(viewer, id, 'confirmed')).rejects.toBeInstanceOf(UserFacingError);
 		await expect(deletePlant(viewer, id)).rejects.toBeInstanceOf(UserFacingError);
 
 		const unchanged = await getPlant(viewer, id);
 		expect(unchanged?.name_bg).toBe('Паричка');
-		expect(unchanged?.status).toBe('unverified');
+		expect(unchanged?.id_status).toBe('draft');
 	});
 
 	describe('deleting a plant with photos', () => {

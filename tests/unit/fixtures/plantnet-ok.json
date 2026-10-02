@@ -1,0 +1,172 @@
+{
+  "query": {
+    "project": "all",
+    "images": [
+      "a",
+      "b"
+    ],
+    "organs": [
+      "auto",
+      "auto"
+    ],
+    "includeRelatedImages": false
+  },
+  "language": "en",
+  "preferedReferential": "the-plant-list",
+  "bestMatch": "Myosotis arvensis (L.) Hill",
+  "results": [
+    {
+      "score": 0.62,
+      "species": {
+        "scientificNameWithoutAuthor": "Myosotis arvensis",
+        "scientificNameAuthorship": "(L.) Hill",
+        "genus": {
+          "scientificNameWithoutAuthor": "Myosotis",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Myosotis"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [
+          "Field forget-me-not",
+          "Незабравка"
+        ],
+        "scientificName": "Myosotis arvensis (L.) Hill"
+      },
+      "gbif": {
+        "id": "5341258"
+      },
+      "images": []
+    },
+    {
+      "score": 0.08,
+      "species": {
+        "scientificNameWithoutAuthor": "Myosotis scorpioides",
+        "scientificNameAuthorship": "L.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Myosotis",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Myosotis"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [],
+        "scientificName": "Myosotis scorpioides L."
+      },
+      "gbif": {
+        "id": "5341262"
+      },
+      "images": []
+    },
+    {
+      "score": 0.5,
+      "gbif": {
+        "id": "1"
+      }
+    },
+    {
+      "score": 0.21,
+      "species": {
+        "scientificNameWithoutAuthor": "Myosotis sylvatica",
+        "scientificNameAuthorship": "Ehrh. ex Hoffm.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Myosotis",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Myosotis"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [
+          "Wood forget-me-not"
+        ],
+        "scientificName": "Myosotis sylvatica Ehrh. ex Hoffm."
+      },
+      "gbif": {
+        "id": "5341243"
+      },
+      "images": []
+    },
+    {
+      "score": 0.04,
+      "species": {
+        "scientificNameWithoutAuthor": "Myosotis discolor",
+        "scientificNameAuthorship": "Pers.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Myosotis",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Myosotis"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [],
+        "scientificName": "Myosotis discolor Pers."
+      },
+      "gbif": {
+        "id": "5341250"
+      },
+      "images": []
+    },
+    {
+      "score": 0.03,
+      "species": {
+        "scientificNameWithoutAuthor": "Lithospermum arvense",
+        "scientificNameAuthorship": "L.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Lithospermum",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Lithospermum"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [],
+        "scientificName": "Lithospermum arvense L."
+      },
+      "gbif": {
+        "id": null
+      },
+      "images": []
+    },
+    {
+      "score": 0.01,
+      "species": {
+        "scientificNameWithoutAuthor": "Echium vulgare",
+        "scientificNameAuthorship": "L.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Echium",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Echium"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Boraginaceae",
+          "scientificNameAuthorship": "",
+          "scientificNameWithAuthor": "Boraginaceae"
+        },
+        "commonNames": [
+          "Viper's bugloss"
+        ],
+        "scientificName": "Echium vulgare L."
+      },
+      "gbif": {
+        "id": "2927348"
+      },
+      "images": []
+    }
+  ],
+  "version": "2025-01-17 (7.3)",
+  "remainingIdentificationRequests": 498
+}

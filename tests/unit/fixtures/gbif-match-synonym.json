@@ -1,0 +1,13 @@
+{
+  "usageKey": 5341262,
+  "acceptedUsageKey": 5341270,
+  "scientificName": "Myosotis scorpioides L.",
+  "canonicalName": "Myosotis scorpioides",
+  "rank": "SPECIES",
+  "status": "SYNONYM",
+  "confidence": 97,
+  "matchType": "EXACT",
+  "kingdom": "Plantae",
+  "family": "Boraginaceae",
+  "synonym": true
+}

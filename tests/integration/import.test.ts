@@ -94,7 +94,7 @@ describe('importLegacy', () => {
 
 		const admin = adminClient();
 		const { data: plant } = await admin.from('plants').select('*').eq('id', 'aaaaaaaa-0000-4000-8000-000000000001').single();
-		expect(plant).toMatchObject({ status: 'unverified', confirmed_at: null, owner_id: ownerId, description: null });
+		expect(plant).toMatchObject({ name_source: 'legacy_ai', owner_id: ownerId, description: null });
 		expect(plant?.legacy_ai).toMatchObject({ risks: 'Алергии', confidence: 'Потвърдено (AI 90%)' });
 
 		const { data: photos } = await admin

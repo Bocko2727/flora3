@@ -1,16 +1,17 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(51);
 
 insert into auth.users (id, email, aud, role, instance_id) values
-  ('11111111-1111-1111-1111-111111111111', 'editor@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('22222222-2222-2222-2222-222222222222', 'viewer@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
+  ('11111111-1111-1111-1111-111111111111', 'editor@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('22222222-2222-2222-2222-222222222222', 'viewer@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
 insert into public.editors (user_id) values ('11111111-1111-1111-1111-111111111111');
 
 select is((select public from storage.buckets where id = 'photos'), false, 'photos bucket is private');
 
 select is(has_table_privilege('authenticated', 'public.plants', 'select'), true, 'authenticated has an explicit select grant on plants');
 select is(has_table_privilege('authenticated', 'public.plants', 'truncate'), false, 'authenticated cannot truncate plants');
+select is(has_table_privilege('authenticated', 'public.editors', 'delete'), false, 'authenticated cannot delete from editors');
 
 set local role authenticated;
 
@@ -25,6 +26,10 @@ select throws_ok(
   $$ insert into public.plants (id, scientific_name, name_bg) values ('aaaaaaaa-0000-0000-0000-000000000001', 'Bellis perennis', 'Паричка') $$,
   '42501', null, 'viewer cannot create plants');
 
+-- self-confirmation is gone
+select hasnt_column('public', 'plants', 'status', 'plants has no self-set status column');
+select hasnt_column('public', 'plants', 'confirmed_at', 'plants has no confirmed_at column');
+
 -- plants: editor inserts, owner defaults
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select lives_ok(
@@ -35,16 +40,10 @@ select is((select owner_id from public.plants where id = 'aaaaaaaa-0000-0000-000
 select throws_ok(
   $$ update public.plants set legacy_ai = '{"risks":"x"}' where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
   '42501', null, 'legacy_ai is not writable by app users');
-select throws_ok(
-  $$ update public.plants set status = 'confirmed' where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
-  '23514', null, 'confirmed status without confirmed_at is rejected');
-select lives_ok(
-  $$ update public.plants set status = 'confirmed', confirmed_at = now() where id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
-  'editor can confirm a plant');
 
 -- plants: viewer reads, cannot update
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
-select is((select count(*)::int from public.plants), 1, 'viewer can read plants');
+select is((select count(*)::int from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1, 'viewer can read plants');
 update public.plants set name_bg = 'Хакната' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 select is((select name_bg from public.plants where id = 'aaaaaaaa-0000-0000-0000-000000000001'),
   'Паричка', 'viewer update changes nothing');
@@ -136,7 +135,7 @@ select throws_ok($$ update public.plant_photos set path = 'x' where id = 'bbbbbb
 -- a second editor with their own plant: editor 1 must not touch it
 reset role;
 insert into auth.users (id, email, aud, role, instance_id) values
-  ('33333333-3333-3333-3333-333333333333', 'editor2@flora.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
+  ('33333333-3333-3333-3333-333333333333', 'editor2@pgtap.test', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000');
 insert into public.editors (user_id) values ('33333333-3333-3333-3333-333333333333');
 insert into public.plants (id, owner_id, scientific_name, name_bg) values
   ('dddddddd-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'Taraxacum officinale', 'Глухарче');
