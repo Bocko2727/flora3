@@ -34,6 +34,13 @@ describe('safeNext', () => {
 	it('never sends the user back to /logout', () => {
 		expect(safeNext('/logout')).toBe('/');
 		expect(safeNext('/logout?x=1')).toBe('/');
+		expect(safeNext('/logout/')).toBe('/');
+		expect(safeNext('/LOGOUT')).toBe('/');
+	});
+	it('rejects paths that normalise into protocol-relative URLs', () => {
+		expect(safeNext('/.//evil.example')).toBe('/');
+		expect(safeNext('/..//evil.example')).toBe('/');
+		expect(safeNext('/a/..//evil.example')).toBe('/');
 	});
 	it('keeps query and hash intact', () => {
 		expect(safeNext('/plants/abc?x=1#y')).toBe('/plants/abc?x=1#y');

@@ -12,7 +12,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (
 		authError &&
 		authError.name !== 'AuthSessionMissingError' &&
-		(authError.status === undefined || authError.status >= 500)
+		(authError.status === undefined || authError.status === 0 || authError.status >= 500)
 	) {
 		console.error('auth.getUser failed', authError);
 		error(503, 'Услугата за вход не отговаря. Опитай пак след малко.');
@@ -28,6 +28,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 
 export const handleError: HandleServerError = ({ error: err, event, status }) => {
+	if (status === 404) return { message: 'Страницата не е намерена.' };
 	console.error(`Unhandled error (${status}) on ${event.url.pathname}`, err);
 	return { message: 'Възникна неочаквана грешка.' };
 };
