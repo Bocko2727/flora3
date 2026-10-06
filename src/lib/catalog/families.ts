@@ -14,7 +14,7 @@ const BG_BEFORE_BRACKETS = /^([А-Яа-яЁё][А-Яа-яЁё\s-]*?)\s*\(/;
 export function parseFamily(raw: string | null | undefined): ParsedFamily {
 	const text = (raw ?? '').trim();
 	if (text === '') return { latin: null, bg: null };
-	if (/^Fungi\b/.test(text)) return { latin: 'Fungi', bg: null };
+	if (/^Fungi\b/.test(text)) return { latin: 'Fungi', bg: text.match(BG_IN_BRACKETS)?.[1]?.trim() ?? null };
 	const latinMatches = text.match(LATIN_FAMILY);
 	const latin = latinMatches ? latinMatches[latinMatches.length - 1] : null;
 	if (!latin) return { latin: null, bg: null };

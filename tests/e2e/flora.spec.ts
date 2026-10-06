@@ -569,16 +569,20 @@ test.describe('family index', () => {
 		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
 		await expect(page).not.toHaveURL(/[?&]v=fam/);
 		await expect(cards(page)).toHaveCount(3);
-		await expect(page.getByText('Asteraceae', { exact: false }).first()).toBeVisible();
+		await expect(page.getByText('Семейство: Asteraceae · Сложноцветни')).toBeVisible();
 
 		await page.getByRole('link', { name: 'Махни филтъра за семейство' }).click();
 		await expect(page).not.toHaveURL(/[?&]f=/);
 		await expect(cards(page)).toHaveCount(5);
 
 		// The family filter works together with search and keeps the page size.
+		// "ка" matches Лайка (Asteraceae) and Мащерка (Lamiaceae); the family filter keeps only Лайка.
+		await gotoSettled(page, '/?q=ка&n=30');
+		await expect(cards(page)).toHaveCount(2);
 		await gotoSettled(page, '/?f=Asteraceae&n=30');
-		await page.getByLabel('Търси').fill('Лайка');
+		await page.getByLabel('Търси').fill('ка');
 		await expect(cards(page)).toHaveCount(1);
+		await expect(cards(page).first()).toContainText('Лайка');
 		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
 		await expect(page).toHaveURL(/[?&]n=30/);
 	});

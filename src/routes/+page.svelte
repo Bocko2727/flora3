@@ -131,7 +131,7 @@
 	<p class="muted count num" aria-live="polite">{visible.length} от {data.plants.length}</p>
 
 	{#if visible.length === 0}
-		<p class="muted">Няма растения, които отговарят на търсенето.</p>
+		<p class="muted">{query.trim() === '' && params.s === 'all' ? 'Няма растения в това семейство.' : 'Няма растения, които отговарят на търсенето.'}</p>
 	{:else}
 		<ul class="grid" aria-label="Растения">
 			{#each shown.items as plant (plant.id)}

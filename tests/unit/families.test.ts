@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { familyGroups, parseFamily } from '$lib/catalog/families';
+import { familyGroups, inFamily, parseFamily } from '$lib/catalog/families';
 
 describe('parseFamily', () => {
 	it('reads the Latin family and the Bulgarian name in brackets', () => {
@@ -16,6 +16,7 @@ describe('parseFamily', () => {
 	});
 	it('keeps Fungi as its own group', () => {
 		expect(parseFamily('Fungi')).toEqual({ latin: 'Fungi', bg: null });
+		expect(parseFamily('Fungi (Гъби)')).toEqual({ latin: 'Fungi', bg: 'Гъби' });
 	});
 	it('returns nothing for an empty or missing family', () => {
 		expect(parseFamily(null)).toEqual({ latin: null, bg: null });
@@ -49,5 +50,13 @@ describe('familyGroups', () => {
 	});
 	it('leaves plants without a family out of the groups', () => {
 		expect(familyGroups(plants).reduce((sum, g) => sum + g.count, 0)).toBe(6);
+	});
+});
+
+describe('inFamily', () => {
+	it('matches a stored family by its Latin key in any format', () => {
+		expect(inFamily('Точеникови (Apocynaceae)', 'Apocynaceae')).toBe(true);
+		expect(inFamily('Asteraceae (Сложноцветни)', 'Lamiaceae')).toBe(false);
+		expect(inFamily(null, 'Asteraceae')).toBe(false);
 	});
 });

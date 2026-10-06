@@ -17,7 +17,7 @@
 				<a href={href(group.latin)}>
 					<span class="top">
 						<span class="latin">{group.latin}</span>
-						<span class="n num" aria-label="{group.count} {group.count === 1 ? 'растение' : 'растения'}">{group.count}</span>
+						<span class="n num">{group.count}<span class="visually-hidden"> {group.count === 1 ? 'растение' : 'растения'}</span></span>
 					</span>
 					<span class="bg">{group.bg ?? '\u00a0'}</span>
 					<span class="bar" aria-hidden="true"><span style:width="{Math.max(6, (group.count / largest) * 100)}%"></span></span>
