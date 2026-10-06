@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -13,6 +14,7 @@
 		<a class="brand" href="/"><img src={favicon} alt="" width="28" height="28" />Флора</a>
 		<form method="POST" action="/logout" class="session">
 			<span class="muted who">{data.user.email}</span>
+			<ThemeToggle />
 			<button type="submit" class="link-button">Изход</button>
 		</form>
 	</header>

@@ -86,8 +86,12 @@
 			var(--scrim) 100%
 		);
 	}
-	.name { font-size: 0.9375rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; color: #f2f6f3; }
-	.latin { font-size: var(--text-sm); line-height: 1.25; overflow-wrap: anywhere; color: #c3cfc8; margin-bottom: var(--space-1); }
+	.name { font-size: 0.9375rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; color: var(--text); }
+	.latin { font-size: var(--text-sm); line-height: 1.25; overflow-wrap: anywhere; color: var(--muted); margin-bottom: var(--space-1); }
+	/* Over a photo the text sits on a dark scrim in both themes, so it stays light. */
+	.photo .name { color: #f2f6f3; }
+	.photo .latin { color: #c3cfc8; }
+	.photo :global(.status-badge:not(.community):not(.ai_gbif)) { color: #c3cfc8; border-color: #c3cfc8; background: rgb(14 23 20 / 0.6); }
 	@media (prefers-reduced-motion: reduce) {
 		img { transition: none; }
 		.card:hover img { transform: none; }

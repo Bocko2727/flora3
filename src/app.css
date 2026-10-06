@@ -1,20 +1,27 @@
-/* One dark palette ("night greenhouse"). Contrast on --surface: --text 13.8:1, --muted 6.2:1,
-   --accent 9.1:1, --danger 7.2:1; --line-strong is ≥3:1 on every surface for field outlines. */
+/* Two palettes, both green. Dark is the default; light follows the system or the header button
+   (data-theme on <html>, set before paint in app.html). Contrast (WCAG AA) on --surface:
+   dark — text 11.2:1, muted 6.5:1, accent 6.7:1, danger 6.5:1, line-strong 3.7:1;
+   light — text 15.3:1, muted 6.2:1, accent 6.1:1, danger 6.7:1, line-strong 3.8:1. */
 :root {
-	--bg: #0e1714;
-	--surface: #16221e;
-	--surface-2: #1d2b26;
-	--text: #e6ede8;
-	--muted: #93a39b;
-	--border: #26352f;
-	--line-strong: #61766c;
-	--accent: #d9bf6a;
+	--bg: #132a1e;
+	--surface: #1a3527;
+	--surface-2: #22402f;
+	--text: #e5efe3;
+	--muted: #a2bca9;
+	--border: #2e4f3b;
+	--line-strong: #6e8f79;
+	--accent: #d8b460;
+	--accent-hover: #e5c77f;
 	--accent-contrast: #1a1606;
-	--danger: #ff8a80;
+	--danger: #ff9a90;
 	--danger-contrast: #1a0d0d;
-	--warn-bg: #3a3112;
+	--warn-bg: #3b3219;
 	--warn-text: #f4dc8f;
+	--header-bg: rgb(19 42 30 / 0.92);
+	--badge-bg: rgb(19 42 30 / 0.6);
 	--scrim: rgb(8 14 12 / 0.92);
+	--shadow-sheet: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 18px 40px -24px rgb(0 0 0 / 0.8);
+	color-scheme: dark;
 
 	--font-display: 'Literata', Georgia, serif;
 	--font-body: 'Onest', system-ui, sans-serif;
@@ -36,10 +43,51 @@
 
 	--radius: 14px;
 	--radius-sm: 8px;
-	--shadow-sheet: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 18px 40px -24px rgb(0 0 0 / 0.8);
-
-	color-scheme: dark;
 	accent-color: var(--accent);
+}
+
+/* Light palette: an explicit choice, or the system setting when nothing is saved. */
+:root[data-theme='light'] {
+	--bg: #edf2ea;
+	--surface: #fafcf7;
+	--surface-2: #e3ebdf;
+	--text: #15261c;
+	--muted: #4f6457;
+	--border: #c9d6c6;
+	--line-strong: #6f8576;
+	--accent: #2f6b45;
+	--accent-hover: #285c3b;
+	--accent-contrast: #f5faf3;
+	--danger: #a33131;
+	--danger-contrast: #ffffff;
+	--warn-bg: #f5e8cf;
+	--warn-text: #6b4a0c;
+	--header-bg: rgb(237 242 234 / 0.92);
+	--badge-bg: rgb(250 252 247 / 0.85);
+	--shadow-sheet: 0 1px 2px rgb(31 68 48 / 0.06), 0 18px 40px -24px rgb(31 68 48 / 0.35);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme='dark']) {
+		--bg: #edf2ea;
+		--surface: #fafcf7;
+		--surface-2: #e3ebdf;
+		--text: #15261c;
+		--muted: #4f6457;
+		--border: #c9d6c6;
+		--line-strong: #6f8576;
+		--accent: #2f6b45;
+		--accent-hover: #285c3b;
+		--accent-contrast: #f5faf3;
+		--danger: #a33131;
+		--danger-contrast: #ffffff;
+		--warn-bg: #f5e8cf;
+		--warn-text: #6b4a0c;
+		--header-bg: rgb(237 242 234 / 0.92);
+		--badge-bg: rgb(250 252 247 / 0.85);
+		--shadow-sheet: 0 1px 2px rgb(31 68 48 / 0.06), 0 18px 40px -24px rgb(31 68 48 / 0.35);
+		color-scheme: light;
+	}
 }
 
 * { box-sizing: border-box; }
@@ -99,7 +147,7 @@ em, .latin { font-family: var(--font-display); font-style: italic; }
 	/* Lines the brand up with the 960px page column. */
 	padding: var(--space-2) max(var(--space-4), calc((100% - 960px) / 2 + var(--space-4)));
 	min-height: 56px;
-	background: rgb(14 23 20 / 0.92);
+	background: var(--header-bg);
 	backdrop-filter: blur(8px);
 	border-bottom: 1px solid var(--border);
 	position: sticky;
@@ -144,7 +192,7 @@ button:hover:not(:disabled) { border-color: var(--muted); }
 .button.primary,
 button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); font-weight: 600; }
 .button.primary:hover,
-button.primary:hover:not(:disabled) { background: #e5cd7b; border-color: #e5cd7b; }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .button.danger,
 button.danger { background: var(--danger); color: var(--danger-contrast); border-color: var(--danger); font-weight: 600; }
 button:disabled { opacity: 0.6; cursor: progress; }
@@ -202,3 +250,13 @@ input[type='file'] { font: inherit; color: var(--muted); max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
 	*, ::before, ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+.theme-toggle {
+	min-width: 44px;
+	padding: 0;
+	border-radius: 999px;
+	background: transparent;
+	border-color: var(--border);
+	color: var(--text);
+}
+.theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
