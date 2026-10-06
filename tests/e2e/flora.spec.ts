@@ -525,3 +525,61 @@ test.describe('catalog pages of 15 / 30 / 45', () => {
 		await expect(pages(page).getByRole('link', { name: '3', exact: true })).toHaveAttribute('aria-current', 'page');
 	});
 });
+
+// Runs after the paging block; again starts from a clean catalog and removes its plants afterwards.
+test.describe('family index', () => {
+	const ids: string[] = [];
+	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
+	const families = (page: Page) => page.getByRole('list', { name: 'Семейства' }).getByRole('listitem');
+
+	test.beforeAll(async () => {
+		await resetCatalog();
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		const rows = [
+			{ name_bg: 'Лайка', scientific_name: 'Matricaria chamomilla', family: 'Asteraceae (Сложноцветни)' },
+			{ name_bg: 'Глухарче', scientific_name: 'Taraxacum officinale', family: 'Asteraceae (Сложноцветни)' },
+			{ name_bg: 'Равнец', scientific_name: 'Achillea millefolium', family: 'Asteraceae' },
+			{ name_bg: 'Мащерка', scientific_name: 'Thymus serpyllum', family: 'Lamiaceae (Устноцветни)' },
+			{ name_bg: 'Неизвестно', scientific_name: 'Plantae sp.', family: null }
+		].map((row) => ({ ...row, id: randomUUID(), owner_id: ownerId }));
+		const { error } = await adminClient().from('plants').insert(rows);
+		if (error) throw error;
+		ids.push(...rows.map((row) => row.id));
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().in('id', ids);
+		if (error) throw error;
+	});
+
+	test('lists families on one screen and filters the catalog by one', async ({ page }) => {
+		await login(page, EDITOR);
+		await gotoSettled(page, '/');
+		await expect(cards(page)).toHaveCount(5);
+
+		await page.getByRole('link', { name: 'Семейства' }).click();
+		await expect(page).toHaveURL(/[?&]v=fam/);
+		await expect(families(page)).toHaveCount(2);
+		await expect(families(page).first()).toContainText('Asteraceae');
+		await expect(families(page).first()).toContainText('Сложноцветни');
+		await expect(families(page).first()).toContainText('3');
+		await expect(cards(page)).toHaveCount(0);
+
+		await families(page).first().getByRole('link').click();
+		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
+		await expect(page).not.toHaveURL(/[?&]v=fam/);
+		await expect(cards(page)).toHaveCount(3);
+		await expect(page.getByText('Asteraceae', { exact: false }).first()).toBeVisible();
+
+		await page.getByRole('link', { name: 'Махни филтъра за семейство' }).click();
+		await expect(page).not.toHaveURL(/[?&]f=/);
+		await expect(cards(page)).toHaveCount(5);
+
+		// The family filter works together with search and keeps the page size.
+		await gotoSettled(page, '/?f=Asteraceae&n=30');
+		await page.getByLabel('Търси').fill('Лайка');
+		await expect(cards(page)).toHaveCount(1);
+		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
+		await expect(page).toHaveURL(/[?&]n=30/);
+	});
+});
