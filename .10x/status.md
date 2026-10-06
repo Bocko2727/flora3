@@ -20,9 +20,10 @@
 Не добавя (чака собственика): MCP `ask` правила (auto mode отказа редакцията — собственикът ги добавя ръчно), Svelte MCP, обновяване на зависимости, `jq`.
 
 ## Локална среда (машината на собственика, 06.10)
-- Node.js 22.23.3 и gh 2.102.0 — преносими, само за потребителя (`%LOCALAPPDATA%Programs{nodejs,gh}`, user PATH; MSI през winget спира на UAC). `npm ci` OK.
+- Node.js 22.23.3 и gh 2.102.0 — преносими, само за потребителя (`%LOCALAPPDATA%\Programs\nodejs`, `...\Programs\gh\bin`, user PATH; MSI през winget спира на UAC). `npm ci` OK.
 - `check`: 0 errors · `test:unit`: 166/166 · `build`: компилира, но adapter-vercel пада на symlink (EPERM) — Windows иска Developer Mode; в CI/Vercel не засяга.
 - Няма Docker и `jq`; gh още не е логнат (`gh auth login`).
+
 ## Отворени задачи
 1. MCP `ask` правила в `.claude/settings.json` (ръчно, от собственика).
 2. Docker за локален Supabase (Approval Gate — лиценз на Docker Desktop в организация).
