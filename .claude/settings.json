@@ -27,7 +27,7 @@
       "mcp__claude_ai_Github__pull_request_read", "mcp__claude_ai_Github__list_*", "mcp__claude_ai_Github__get_*",
       "mcp__claude_ai_Supabase__list_*", "mcp__claude_ai_Supabase__get_*",
       "mcp__claude_ai_Vercel__get_*", "mcp__claude_ai_Vercel__list_*",
-      "Bash(git branch)", "Bash(git branch -a)", "Bash(git branch --show-current)", "Bash(git branch -d:*)"
+      "Bash(git branch)", "Bash(git branch -a)", "Bash(git branch --show-current)"
     ],
     "ask": [
       "Bash(npm install:*)",
@@ -65,6 +65,7 @@
       "Bash(git push * --mirror *)",
       "Bash(git push * --mirror)",
       "Bash(gh pr merge:*)",
+      "Bash(git branch -D:*)",
       "mcp__claude_ai_Github__merge_pull_request",
       "mcp__claude_ai_Github__delete_repository",
       "mcp__claude_ai_Supabase__delete_branch",
@@ -83,12 +84,6 @@
       "mcp__claude_ai_Vercel__get_project_env",
       "mcp__claude_ai_Vercel__get_shared_env_var",
       "mcp__claude_ai_Vercel__filter_project_envs",
-"mcp__claude_ai_Vercel__get_auth_token",
-"mcp__claude_ai_Vercel__get_project_token",
-"mcp__claude_ai_Vercel__get_edge_config_token",
-"mcp__claude_ai_Vercel__get_project_env",
-"mcp__claude_ai_Vercel__get_shared_env_var",
-"mcp__claude_ai_Vercel__filter_project_envs",
       "Bash(supabase db push:*)",
       "Bash(npx supabase db push:*)",
       "Read(./.env)",
