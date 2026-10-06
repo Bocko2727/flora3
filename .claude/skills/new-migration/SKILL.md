@@ -27,8 +27,11 @@ create table public.<name> (
 );
 alter table public.<name> enable row level security;
 
+-- Default privileges may auto-grant everything (вкл. TRUNCATE, който заобикаля RLS); strip it.
+revoke all on public.<name> from anon, authenticated;
 grant select on public.<name> to authenticated;
-grant insert, update on public.<name> to authenticated;   -- без delete, ако не е нужно
+grant insert (<колони>) on public.<name> to authenticated;   -- по колони; update/delete само с политика за тях
+grant all on public.<name> to service_role;
 
 create policy "<name>: authenticated read" on public.<name>
   for select to authenticated using (true);
@@ -36,7 +39,7 @@ create policy "<name>: editor writes own" on public.<name>
   for insert to authenticated
   with check ((select public.is_editor()) and owner_id = (select auth.uid()));
 ```
-Изтрий неприложимите части. Колони с граници → `check (...)`. Wrap-вай `auth.uid()`/`is_editor()` в `(select …)` (RLS performance).
+Изтрий неприложимите части. Образец: `supabase/migrations/20261004090000_identification_status.sql` (revoke → grant по колони → service_role). Колони с граници → `check (...)`. Wrap-вай `auth.uid()`/`is_editor()` в `(select …)` (RLS performance).
 
 ## 3. pgTAP тест — шаблон (както в `supabase/tests/legacy_review.test.sql`)
 ```sql
@@ -55,11 +58,13 @@ select is((select relrowsecurity from pg_class where oid = 'public.<name>'::regc
 -- Редактор може да пише
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"77777777-0000-0000-0000-000000000007","role":"authenticated"}';
-select lives_ok($$ insert into public.<name> default values $$, 'editor can insert');
+select lives_ok($$ insert into public.<name> (<колона>) values (<стойност>) $$, 'editor can insert');
 
 -- Зрител не може
 set local request.jwt.claims = '{"sub":"88888888-0000-0000-0000-000000000008","role":"authenticated"}';
-select throws_ok($$ insert into public.<name> default values $$, '42501', null, 'viewer cannot insert');
+select throws_ok($$ insert into public.<name> (<колона>) values (<стойност>) $$, '42501', null, 'viewer cannot insert');
+select throws_ok($$ truncate public.<name> $$, '42501', null, 'viewer cannot truncate <name>');
+-- update/delete от зрител: RLS ги филтрира тихо → провери с is(...), че редът е непроменен/наличен.
 reset role;
 
 select * from finish();
@@ -70,7 +75,7 @@ rollback;
 ## 4. Rollback SQL
 Не е файл в `migrations/`. Напиши го в описанието на PR и в `.10x/handoff.md`:
 ```sql
--- Rollback <ts>_$ARGUMENTS
+-- Rollback <ts>_$ARGUMENTS (drop table премахва и grant-овете)
 drop policy if exists "<name>: editor writes own" on public.<name>;
 drop policy if exists "<name>: authenticated read" on public.<name>;
 drop table if exists public.<name>;
