@@ -14,5 +14,6 @@ model: inherit
 5. Достъпност и mobile, ако има UI.
 6. Ботаника: нищо от AI/API не е показано като потвърдено.
 7. Правила: `main` непокътнат; няма merge в `main`, force-push, платени услуги, нови пакети или настройки във Vercel без одобрение.
+8. MCP: нито един агент не е ползвал GitHub/Supabase/Vercel MCP за действие с одобрение (запис в `main`, `merge_pull_request`, `apply_migration`/`execute_sql` с промяна към хоста, env/настройки/promote/rollback във Vercel). Bash правилата не ги покриват — провери отчетите и историята.
 
 Не поправяш. Присъда: APPROVE / CHANGES NEEDED / BLOCK + конкретни точки (файл:ред). Отчет във формата от CLAUDE.md (Handoff).
