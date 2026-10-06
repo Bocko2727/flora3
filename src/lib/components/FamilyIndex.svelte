@@ -19,7 +19,7 @@
 						<span class="latin">{group.latin}</span>
 						<span class="n num" aria-label="{group.count} {group.count === 1 ? 'растение' : 'растения'}">{group.count}</span>
 					</span>
-					<span class="bg">{group.bg ?? ' '}</span>
+					<span class="bg">{group.bg ?? '\u00a0'}</span>
 					<span class="bar" aria-hidden="true"><span style:width="{Math.max(6, (group.count / largest) * 100)}%"></span></span>
 				</a>
 			</li>
@@ -71,5 +71,6 @@
 	.bar span { display: block; height: 100%; background: var(--accent); }
 	@media (max-width: 420px) {
 		.bar { display: none; }
+		.latin { font-size: var(--text-sm); }
 	}
 </style>

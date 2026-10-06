@@ -189,7 +189,7 @@
 		display: inline-flex;
 		gap: 2px;
 		padding: 2px;
-		margin-top: var(--space-4);
+		margin: var(--space-4) 0 var(--space-3);
 		border: 1px solid var(--border);
 		border-radius: 999px;
 	}
