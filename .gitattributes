@@ -1,0 +1,3 @@
+# Shell скриптовете (hook-ове на Claude Code) трябва да са с LF и на Windows,
+# иначе sh спира на \r и hook-ът не блокира.
+*.sh text eol=lf

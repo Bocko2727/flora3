@@ -1,0 +1,20 @@
+{
+  "name": "Flora 3",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "hostRequirements": { "memory": "8gb" },
+  "forwardPorts": [5174, 54321],
+  "portsAttributes": {
+    "5174": { "label": "Flora dev" },
+    "54321": { "label": "Supabase API (local)" }
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y jq && npm ci && npx playwright install --with-deps chromium",
+  "customizations": {
+    "vscode": {
+      "extensions": ["svelte.svelte-vscode", "ms-playwright.playwright"]
+    }
+  }
+}
