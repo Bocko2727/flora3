@@ -32,7 +32,7 @@ Bucket `photos` е частен (подписани URL). Само собств�
 
 ## Екип и работен процес
 Подагенти в `.claude/agents/`: `researcher`, `botanist`, `designer`, `developer`, `qa`, `release`, `reviewer`. Ползвай ги автоматично, когато подобряват качеството, скоростта или проверката; независимите задачи вървят паралелно. Конвейер: проучване → дизайн/код → QA → ревизия (друг агент, не авторът) → push на клона и отворен PR.
-Правила по пътища: `.claude/rules/`. Технически защити: `.claude/settings.json` и `.claude/hooks/` (guard-bash.sh, protect-files.sh).
+Правила по пътища: `.claude/rules/`. Умения: `/preflight` (целият набор преди PR), `/new-migration <име>`. Технически защити: `.claude/settings.json` и `.claude/hooks/` (guard-bash.sh, protect-files.sh, guard-mcp.sh за GitHub MCP; related-tests.sh пуска свързаните unit тестове след редакция; status-reminder.sh напомня за `.10x/`). MCP инструментите (GitHub, Supabase, Vercel) не са покрити от Bash правилата — същите граници важат и за тях.
 
 ## Памет между сесии
 Всеки отчет отива в `.10x/handoff.md`; в края на задачата се обновява `.10x/status.md`. Документите в Project Knowledge (claude.ai) са справочни; при противоречие важат кодът и проверка само с четене.
