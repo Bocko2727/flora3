@@ -2,8 +2,9 @@ import type { IdStatus } from '$lib/status';
 
 export type StatusFilter = 'all' | IdStatus;
 
-export const PAGE_SIZES = [6, 12] as const;
+export const PAGE_SIZES = [15, 30, 45] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
+export const DEFAULT_PAGE_SIZE: PageSize = 15;
 
 const STATUS_FILTERS: readonly string[] = ['all', 'draft', 'ai_gbif', 'community'];
 
@@ -39,7 +40,7 @@ export function parseCatalogParams(params: URLSearchParams): { q: string; s: Sta
 	return {
 		q: params.get('q') ?? '',
 		s: STATUS_FILTERS.includes(s) ? (s as StatusFilter) : 'all',
-		n: (PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSize) : 12,
+		n: (PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSize) : DEFAULT_PAGE_SIZE,
 		p: Number.isInteger(p) && p >= 1 ? p : 1
 	};
 }
