@@ -1,7 +1,14 @@
 #!/bin/bash
 # Защитава .env* (освен .env.example), .git/ и вече commit-нати миграции (само нови файлове).
 INPUT=$(cat)
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+if command -v jq >/dev/null 2>&1; then
+  FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
+else
+  # Без jq (Git Bash на Windows): извличане със sed; Windows \\ стават /.
+  FILE_PATH=$(printf '%s' "$INPUT" | tr -d '\n\r' | sed -e 's/\\\\/\//g' \
+    | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+fi
+FILE_PATH=${FILE_PATH//\\//}  # Windows \ → /
 [[ -z "$FILE_PATH" ]] && exit 0
 BASE=$(basename "$FILE_PATH")
 if [[ "$BASE" == .env* && "$BASE" != ".env.example" ]] || [[ "$FILE_PATH" == *"/.git/"* || "$FILE_PATH" == .git/* ]]; then

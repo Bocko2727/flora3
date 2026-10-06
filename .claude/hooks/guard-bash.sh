@@ -1,13 +1,17 @@
 #!/bin/bash
-# PreToolUse hook за Bash (Project Instructions §5.1). Fail-closed.
+# PreToolUse hook за Bash (Project Instructions §5.1). Работи и без jq.
 #  1) git push към main, force-push и git push, докато текущият клон е main;
 #  2) четене на .env* през shell (освен .env.example).
-if ! command -v jq >/dev/null 2>&1; then
-  echo "Blocked: jq липсва, hook-ът не може да провери командата (fail-closed)." >&2
-  exit 2
-fi
 INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+# jq, ако го има; иначе извличане със sed (Git Bash на Windows няма jq).
+# Ескейпнатите \\ и \" се неутрализират; ако полето не се намери, се проверява целият вход.
+if command -v jq >/dev/null 2>&1; then
+  CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty')
+else
+  CMD=$(printf '%s' "$INPUT" | tr -d '\n\r' | sed -e 's/\\\\/ /g' -e "s/\\\\\"/'/g" \
+    | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  [[ -z "$CMD" ]] && CMD=$INPUT
+fi
 [[ -z "$CMD" ]] && exit 0
 
 if echo "$CMD" | grep -Eq '(^|[;&|(] *|&& *)git( +(-C +[^ ]+|-c +[^ ]+|--no-pager))* +push'; then
@@ -18,7 +22,7 @@ if echo "$CMD" | grep -Eq '(^|[;&|(] *|&& *)git( +(-C +[^ ]+|-c +[^ ]+|--no-page
     echo "Blocked: push към main е забранен (Project Instructions §5.1). Работи на feat/fix/chore клон; merge е на собственика." >&2
     exit 2
   fi
-  if echo "$CMD" | grep -Eq '(^| )(--force|-f|--force-with-lease(=[^ ]*)?|--delete|-d|--mirror)( |$)|(^| )\+[^ ]+|(^| )-[a-zA-Z]*f[a-zA-Z]*( |$)'; then
+  if echo "$CMD" | grep -Eq '(^| )(--force|-f|--force-with-lease(=[^ ]*)?|--delete|-d|--mirror|--all|--branches)( |$)|(^| )\+[^ ]+|(^| )-[a-zA-Z]*f[a-zA-Z]*( |$)'; then
     echo "Blocked: force-push/изтриване на remote ref е забранено (Project Instructions §5.1)." >&2
     exit 2
   fi
