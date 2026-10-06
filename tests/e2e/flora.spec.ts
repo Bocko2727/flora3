@@ -485,7 +485,6 @@ test.describe('catalog pages of 15 / 30 / 45', () => {
 
 	test('shows 15, 30 or 45 plants per page and keeps the page in the URL', async ({ page }) => {
 		await login(page, EDITOR);
-		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(14, 23, 20)');
 
 		await gotoSettled(page, '/');
 		await expect(cards(page)).toHaveCount(15);
@@ -585,5 +584,34 @@ test.describe('family index', () => {
 		await expect(cards(page).first()).toContainText('Лайка');
 		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
 		await expect(page).toHaveURL(/[?&]n=30/);
+	});
+});
+
+test.describe('light and dark theme', () => {
+	test('follows the system and switches with the header button, remembered after reload', async ({ browser }) => {
+		const context = await browser.newContext({ colorScheme: 'dark', viewport: { width: 412, height: 915 } });
+		const page = await context.newPage();
+		await login(page, EDITOR);
+		const html = page.locator('html');
+		const toggle = page.getByRole('button', { name: /Светъл режим|Тъмен режим/ });
+
+		// No saved choice: the system dark scheme gives the dark green palette.
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(19, 42, 30)');
+		await expect(toggle).toHaveAccessibleName('Светъл режим');
+
+		await toggle.click();
+		await expect(html).toHaveAttribute('data-theme', 'light');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(237, 242, 234)');
+		await expect(toggle).toHaveAccessibleName('Тъмен режим');
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(html).toHaveAttribute('data-theme', 'light');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(237, 242, 234)');
+
+		await page.getByRole('button', { name: 'Тъмен режим' }).click();
+		await expect(html).toHaveAttribute('data-theme', 'dark');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(19, 42, 30)');
+		await context.close();
 	});
 });
