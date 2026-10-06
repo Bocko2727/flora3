@@ -1,5 +1,13 @@
 # Handoff (2026-10-06)
 
+## 2026-10-06 · оркестратор (Claude Code) · feat/library-pagination (HANDOFF §3.1)
+Статус: DONE (чака CI и merge от собственика; e2e не е пускан)
+Резултат: `PAGE_SIZES = [15, 30, 45]`, изнесен `DEFAULT_PAGE_SIZE: PageSize = 15`; непознат `n` (вкл. стари 6/12) → 15. Без промени в данни, UI компонентите не са пипани (`Pagination.svelte` рендерира `PAGE_SIZES`).
+Променени файлове: `src/lib/catalog/filter.ts`, `tests/unit/filter.test.ts`, `tests/e2e/flora.spec.ts`, `.10x/status.md`, `.10x/handoff.md`
+Доказателства: TDD — новите unit тестове паднаха 4/19 преди кода, после 19/19. `test:unit` 169/169 (20 файла); `check` 0/0 (606 файла, вкл. `tests/**`); `build` компилира, adapter-vercel пада на EPERM symlink (Windows). Ревизор (отделен агент): кодът и e2e проверени по компонентите — верни; CHANGES NEEDED само за доказателства/.10x → `.10x` обновен, добавени 2 проверки по препоръка (`aria-current` на 45 и на 15 след `?n=12`).
+Рискове / несигурност: `db:reset`, `test:db`, `test:integration`, `test:e2e` НЕ са пускани (няма Docker); CI фаза A пуска само `check`/`test:unit`/`build`, т.е. новият e2e тест не е изпълняван никъде. Няма screenshot-и при 360/1280 px (без база няма растения) — превключвателят е с 3 бутона вместо 2; по CSS (min 44 px, flex-wrap) изглежда наред, визуално непроверено.
+Следващ: собственикът решава дали merge без e2e или първо `/preflight` на машина с Docker; после §3.2 `feat/family-index`.
+
 ## 2026-10-06 · оркестратор (Claude Code) · chore/claude-automation
 Статус: DONE (чака CI и merge от собственика; ask правилата — ръчно)
 Резултат: MCP `deny` (GitHub merge/delete repo, Supabase branch/project, Vercel pause/домейни); `guard-mcp.sh` блокира запис през GitHub MCP в `main` или без branch; PostToolUse `related-tests.sh` (vitest related); Stop `status-reminder.sh`; умения `/preflight` и `/new-migration`; ревизор т. 8 (MCP); CLAUDE.md; `*.bundle` в `.gitignore` (излишният bundle — head 3bb9c20 е в main — изтрит).
