@@ -20,17 +20,32 @@
       "Bash(npm run db:reset)",
       "Bash(npm run build)",
       "Bash(git add:*)", "Bash(git switch:*)", "Bash(git checkout -b:*)", "Bash(git log:*)",
-      "Bash(git fetch:*)", "Bash(git branch:*)", "Bash(git show:*)", "Bash(git restore:*)",
+      "Bash(git fetch:*)", "Bash(git show:*)", "Bash(git restore:*)",
       "Bash(npm ci)", "Bash(npm run dev)", "Bash(npm run db:start)", "Bash(npm run db:stop)",
       "Bash(npm run env:local)", "Bash(npm run db:types)", "Bash(npx vitest:*)", "Bash(npx playwright:*)",
       "Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(gh pr checks:*)", "Bash(gh run view:*)", "Bash(gh run list:*)",
       "mcp__claude_ai_Github__pull_request_read", "mcp__claude_ai_Github__list_*", "mcp__claude_ai_Github__get_*",
       "mcp__claude_ai_Supabase__list_*", "mcp__claude_ai_Supabase__get_*",
-      "mcp__claude_ai_Vercel__get_*", "mcp__claude_ai_Vercel__list_*"
+      "mcp__claude_ai_Vercel__get_*", "mcp__claude_ai_Vercel__list_*",
+      "Bash(git branch)", "Bash(git branch -a)", "Bash(git branch --show-current)", "Bash(git branch -d:*)"
     ],
     "ask": [
       "Bash(npm install:*)",
-      "Bash(npm i:*)"
+      "Bash(npm i:*)",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "mcp__claude_ai_Supabase__create_branch",
+      "mcp__claude_ai_Supabase__restore_project",
+      "mcp__claude_ai_Vercel__create_project_env",
+      "mcp__claude_ai_Vercel__edit_project_env",
+      "mcp__claude_ai_Vercel__update_project",
+      "mcp__claude_ai_Vercel__request_promote",
+      "mcp__claude_ai_Vercel__request_rollback",
+      "mcp__claude_ai_Vercel__create_deployment",
+      "mcp__claude_ai_Github__create_or_update_file",
+      "mcp__claude_ai_Github__push_files",
+      "mcp__claude_ai_Github__delete_file"
     ],
     "deny": [
       "Bash(git push origin main:*)",
