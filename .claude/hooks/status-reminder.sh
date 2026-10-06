@@ -11,7 +11,8 @@ BRANCH=$(git branch --show-current 2>/dev/null)
 AHEAD=$(git rev-list --count main..HEAD 2>/dev/null || echo 0)
 [[ "$AHEAD" -eq 0 ]] && exit 0
 
-if git diff --quiet main...HEAD -- .10x/ 2>/dev/null && git diff --quiet -- .10x/ 2>/dev/null; then
+if git diff --quiet main...HEAD -- .10x/ 2>/dev/null && git diff --quiet HEAD -- .10x/ 2>/dev/null \
+   && [[ -z "$(git ls-files --others --exclude-standard -- .10x/ 2>/dev/null)" ]]; then
   # systemMessage се показва на потребителя; exit 0 не спира Claude.
   printf '{"systemMessage":"Напомняне: клонът %s има %s commit-а, а .10x/status.md и .10x/handoff.md не са обновени (CLAUDE.md, „Памет между сесии“)."}\n' "$BRANCH" "$AHEAD"
 fi

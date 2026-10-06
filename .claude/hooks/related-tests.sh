@@ -13,7 +13,7 @@ case "$FILE_PATH" in
   */src/*.ts|*/src/*.svelte|src/*.ts|src/*.svelte) ;;
   *) exit 0 ;;
 esac
-[[ "$FILE_PATH" == *database.types.ts ]] && exit 0
+[[ "$FILE_PATH" == *database.types.ts || "$FILE_PATH" == */node_modules/* ]] && exit 0
 
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 # Без Node или без npm ci (напр. нова машина) — тихо пропусни, не блокирай редакциите.

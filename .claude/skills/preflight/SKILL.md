@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # /preflight
 
-Пусни командите **по ред**, всяка поотделно, с `FLORA_OFFLINE_EXTERNAL=1`:
+Пусни командите **по ред**, всяка поотделно и точно както са написани (така съвпадат с allow правилата в `.claude/settings.json`). Без префикс `FLORA_OFFLINE_EXTERNAL=1`: e2e го задава в `playwright.config.ts`, unit тестовете mock-ват мрежата; в CI е в `env` на job-а.
 
 1. `npm run db:reset` (локална база; изисква Docker и `npm run db:start`)
 2. `npm run test:db`
