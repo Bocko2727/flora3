@@ -13,3 +13,5 @@ supabase/.branches/
 import-report*.json
 legacy-export*.json
 .vscode/
+.claude/settings.local.json
+CLAUDE.local.md
