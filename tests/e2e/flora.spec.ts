@@ -461,7 +461,7 @@ test('viewer does not see the review', async ({ page }) => {
 
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
-test.describe('catalog pages of 6 / 12', () => {
+test.describe('catalog pages of 15 / 30 / 45', () => {
 	const ids: string[] = [];
 	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
 	const pages = (page: Page) => page.getByRole('navigation', { name: 'Страници' });
@@ -469,7 +469,7 @@ test.describe('catalog pages of 6 / 12', () => {
 	test.beforeAll(async () => {
 		await resetCatalog();
 		const ownerId = await ensureUser(EDITOR, { editor: true });
-		const rows = Array.from({ length: 13 }, (_, i) => {
+		const rows = Array.from({ length: 31 }, (_, i) => {
 			const n = String(i + 1).padStart(2, '0');
 			return { id: randomUUID(), name_bg: `Тест ${n}`, scientific_name: `Testus ${n}`, owner_id: ownerId };
 		});
@@ -483,36 +483,43 @@ test.describe('catalog pages of 6 / 12', () => {
 		if (error) throw error;
 	});
 
-	test('shows 6 or 12 plants per page and keeps the page in the URL', async ({ page }) => {
+	test('shows 15, 30 or 45 plants per page and keeps the page in the URL', async ({ page }) => {
 		await login(page, EDITOR);
 		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(14, 23, 20)');
 
-		await gotoSettled(page, '/?n=6');
-		await expect(cards(page)).toHaveCount(6);
+		await gotoSettled(page, '/');
+		await expect(cards(page)).toHaveCount(15);
+		await expect(pages(page).getByRole('link', { name: '15', exact: true })).toHaveAttribute('aria-current', 'true');
 		await expect(pages(page).getByRole('link', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
 		await expect(pages(page).getByRole('link', { name: '2', exact: true })).not.toHaveAttribute('aria-current');
 
 		await pages(page).getByRole('link', { name: '3', exact: true }).click();
 		await expect(cards(page)).toHaveCount(1);
 		await expect(page).toHaveURL(/[?&]p=3/);
-		await expect(cards(page).first()).toContainText('Тест 13');
+		await expect(cards(page).first()).toContainText('Тест 31');
 
-		await pages(page).getByRole('link', { name: '12', exact: true }).click();
-		await expect(cards(page)).toHaveCount(12);
-		await expect(page).toHaveURL(/[?&]n=12/);
+		await pages(page).getByRole('link', { name: '30', exact: true }).click();
+		await expect(cards(page)).toHaveCount(30);
+		await expect(page).toHaveURL(/[?&]n=30/);
 		await expect(page).not.toHaveURL(/[?&]p=/);
 
-		await pages(page).getByRole('link', { name: '2', exact: true }).click();
+		await pages(page).getByRole('link', { name: '45', exact: true }).click();
+		await expect(cards(page)).toHaveCount(31);
+		await expect(page).toHaveURL(/[?&]n=45/);
+		await expect(pages(page).getByRole('list')).toHaveCount(0);
+
+		await gotoSettled(page, '/?n=15&p=2');
 		await expect(page).toHaveURL(/[?&]p=2/);
-		await page.getByLabel('Търси').fill('Тест 13');
+		await page.getByLabel('Търси').fill('Тест 31');
 		await expect(page).not.toHaveURL(/[?&]p=/);
 		await expect(page).toHaveURL(/[?&]q=/);
 		await expect(cards(page)).toHaveCount(1);
-		await expect(cards(page).first()).toContainText('Тест 13');
-		await expect(page.getByLabel('Търси')).toHaveValue('Тест 13');
+		await expect(cards(page).first()).toContainText('Тест 31');
+		await expect(page.getByLabel('Търси')).toHaveValue('Тест 31');
 
-		await gotoSettled(page, '/?p=99');
+		// Old links with the former sizes fall back to 15.
+		await gotoSettled(page, '/?n=12&p=99');
 		await expect(cards(page)).toHaveCount(1);
-		await expect(pages(page).getByRole('link', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
+		await expect(pages(page).getByRole('link', { name: '3', exact: true })).toHaveAttribute('aria-current', 'page');
 	});
 });
