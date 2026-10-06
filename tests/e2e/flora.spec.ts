@@ -506,6 +506,7 @@ test.describe('catalog pages of 15 / 30 / 45', () => {
 		await pages(page).getByRole('link', { name: '45', exact: true }).click();
 		await expect(cards(page)).toHaveCount(31);
 		await expect(page).toHaveURL(/[?&]n=45/);
+		await expect(pages(page).getByRole('link', { name: '45', exact: true })).toHaveAttribute('aria-current', 'true');
 		await expect(pages(page).getByRole('list')).toHaveCount(0);
 
 		await gotoSettled(page, '/?n=15&p=2');
@@ -519,6 +520,7 @@ test.describe('catalog pages of 15 / 30 / 45', () => {
 
 		// Old links with the former sizes fall back to 15.
 		await gotoSettled(page, '/?n=12&p=99');
+		await expect(pages(page).getByRole('link', { name: '15', exact: true })).toHaveAttribute('aria-current', 'true');
 		await expect(cards(page)).toHaveCount(1);
 		await expect(pages(page).getByRole('link', { name: '3', exact: true })).toHaveAttribute('aria-current', 'page');
 	});
