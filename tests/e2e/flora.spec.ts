@@ -661,4 +661,27 @@ test.describe('species profile as questions and answers', () => {
 		const months = page.getByRole('region', { name: 'Снимки по месеци' });
 		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
 	});
+
+	test('marks the months the photos were taken in and counts undated photos', async ({ page }) => {
+		const dated = await legacyPlantWithPhoto('Leontopodium nivale', 'leaf-a.jpg');
+		const undated = await legacyPlantWithPhoto('Crocus sp.', 'leaf-b.jpg');
+		const { error } = await adminClient()
+			.from('plant_photos')
+			.update({ taken_at: '2025-07-16T09:33:01Z' })
+			.eq('plant_id', dated);
+		if (error) throw error;
+
+		await login(page, EDITOR);
+		await gotoSettled(page, `/plants/${dated}`);
+		const months = page.getByRole('region', { name: 'Снимки по месеци' });
+		await expect(months.locator('li.on')).toHaveCount(1);
+		await expect(months.getByText('юли: снимано')).toHaveCount(1);
+		await expect(months.getByText('без дата')).toHaveCount(0);
+
+		await gotoSettled(page, `/plants/${undated}`);
+		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
+		await expect(months.getByText('1 от 1 снимки са без дата и не се броят.')).toBeVisible();
+
+		await adminClient().from('plants').delete().in('id', [dated, undated]);
+	});
 });

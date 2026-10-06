@@ -40,7 +40,7 @@
 		align-items: center;
 		gap: var(--space-2);
 		color: var(--accent);
-		font-size: var(--text-lg);
+		font-size: var(--text-base);
 	}
 	.tag {
 		font-family: var(--font-body);

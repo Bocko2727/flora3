@@ -3,7 +3,8 @@
 	const NAMES = ['януари', 'февруари', 'март', 'април', 'май', 'юни', 'юли', 'август', 'септември', 'октомври', 'ноември', 'декември'];
 </script>
 
-<!-- When the plant was photographed, from the photo dates. Colour is not the only cue: each month says "снимано". -->
+<!-- When the plant was photographed, from the photo dates. Colour is not the only cue: a photographed month also
+     gets a dot under its letter, and screen readers hear "снимано". -->
 <section class="months" aria-labelledby="months-title">
 	<h2 id="months-title">Снимки по месеци</h2>
 	{#if months.length === 0}
@@ -18,9 +19,9 @@
 				</li>
 			{/each}
 		</ol>
-		{#if dated < total}
-			<p class="muted note num">{total - dated} от {total} снимки са без дата и не се броят.</p>
-		{/if}
+	{/if}
+	{#if dated < total}
+		<p class="muted note num">{total - dated} от {total} снимки са без дата и не се броят.</p>
 	{/if}
 </section>
 
@@ -38,6 +39,17 @@
 		font-size: var(--text-xs);
 		font-weight: 600;
 	}
+	.strip li { position: relative; }
 	.strip li.on { background: var(--accent); color: var(--accent-contrast); }
+	.strip li.on::after {
+		content: '';
+		position: absolute;
+		bottom: 3px;
+		width: 4px;
+		height: 4px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+	.strip li { height: 32px; }
 	.note { font-size: var(--text-sm); margin: var(--space-2) 0 0; }
 </style>
