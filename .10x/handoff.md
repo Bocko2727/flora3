@@ -49,3 +49,11 @@
 Доказателства: db:reset OK · test:db PASS · unit 182/182 · integration 59/59 · e2e 19/19 (+ повторно „family index“ след поправките) · check 0 · build OK · screenshot-и 360/1280 (в чата). Ревизор: CHANGES → поправени т. 2, 3, 6, 7, 8, 9.
 Рискове / несигурност: клонът е от feat/library-pagination (PR #10) — да се merge-не след него. Отворени за собственика: `Adoxaceae / Viburnaceae` → показва се Viburnaceae; запазени имена (Compositae…) не се разпознават — в текущите 98 записа няма такива.
 Следващ: собственикът отваря PR и merge-ва; после 3.3 (въпроси за шрифтове и светъл режим).
+
+## 2026-10-06 · developer (claude.ai сесия) · 3.3 feat/green-theme
+Статус: DONE
+Резултат: зелена палитра — тъмен (тъмнозелен, не черен) и светъл режим; бутон в хедъра; без запазен избор следва системата; изборът се пази в localStorage и се прилага преди изрисуване (app.html). Шрифтовете остават Literata + Onest (решение на собственика).
+Променени файлове: src/app.css, src/app.html, src/lib/components/ThemeToggle.svelte (нов), src/routes/+layout.svelte, src/lib/components/PlantCard.svelte, src/lib/components/StatusBadge.svelte, tests/e2e/flora.spec.ts
+Доказателства: test:db PASS · unit 182/182 · integration 59/59 · e2e 20/20 · check 0 · build OK · screenshot-и 360/1280 в двата режима. Ревизор: CHANGES → поправени AA на значката върху снимка и theme-color.
+Рискове / несигурност: иконата на бутона за миг е „слънце“ преди hydration в светъл режим (само иконата). Светлата палитра е дублирана в app.css ([data-theme] и @media) — да се редактират заедно.
+Следващ: собственикът merge-ва; после 3.4 (профил като въпроси и отговори).

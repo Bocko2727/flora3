@@ -18,7 +18,7 @@
 ## Прототип „Хербарий“ (docs/prototype/HANDOFF.md §3) — всяка точка е отделен клон и PR
 - **3.1 `feat/library-pagination` (този PR):** `PAGE_SIZES = [15, 30, 45]`, `DEFAULT_PAGE_SIZE = 15`; стари `?n=6/12` → 15. Unit + e2e обновени. e2e **не е пускан** (няма Docker; CI фаза A не пуска e2e).
 - 3.2 `feat/family-index`: готово, клон качен, чака PR (база: след #10).
-- 3.3 `feat/green-theme` — **преди старт питай собственика** за шрифтовете (Spectral/IBM Plex vs Literata/Onest) и светлия режим (HANDOFF §2).
+- 3.3 `feat/green-theme`: готово, клон качен, чака PR. Шрифтове: остават Literata + Onest; светъл + тъмен с бутон.
 - 3.4–3.7 по реда в HANDOFF.
 - Извън 3.1, за отделна точка: „‹ Назад · Напред ›“ в пагинацията (има го в прототипа).
 

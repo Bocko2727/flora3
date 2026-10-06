@@ -23,7 +23,7 @@
 		border-radius: 999px;
 		border: 1px solid var(--muted);
 		color: var(--muted);
-		background: rgb(14 23 20 / 0.6);
+		background: var(--badge-bg);
 	}
 	.status-badge i {
 		flex: none;
