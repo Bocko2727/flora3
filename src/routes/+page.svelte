@@ -2,9 +2,18 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
+	import FamilyIndex from '$lib/components/FamilyIndex.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import PlantCard from '$lib/components/PlantCard.svelte';
-	import { filterPlants, paginate, parseCatalogParams, type PageSize, type StatusFilter } from '$lib/catalog/filter';
+	import { familyGroups, inFamily } from '$lib/catalog/families';
+	import {
+		filterPlants,
+		paginate,
+		parseCatalogParams,
+		type CatalogView,
+		type PageSize,
+		type StatusFilter
+	} from '$lib/catalog/filter';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -16,7 +25,11 @@
 		if (type !== 'goto') query = params.q;
 	});
 
-	const visible = $derived(filterPlants(data.plants, query, params.s));
+	const visible = $derived(
+		filterPlants(data.plants, query, params.s).filter((plant) => params.f === '' || inFamily(plant.family, params.f))
+	);
+	const groups = $derived(familyGroups(data.plants));
+	const activeFamily = $derived(params.f === '' ? null : (groups.find((g) => g.latin === params.f) ?? { latin: params.f, bg: null }));
 	// Until the URL catches up with a new search, show its first page.
 	const shown = $derived(paginate(visible, query === params.q ? params.p : 1, params.n));
 
@@ -27,8 +40,17 @@
 		{ value: 'community', label: 'Потвърдени' }
 	];
 
-	function catalogHref(q: string, s: StatusFilter, n: PageSize, p: number): string {
+	function catalogHref(
+		q: string,
+		s: StatusFilter,
+		n: PageSize,
+		p: number,
+		f: string = params.f,
+		v: CatalogView = 'plants'
+	): string {
 		const search = new URLSearchParams({ n: String(n) });
+		if (v === 'fam') search.set('v', 'fam');
+		if (f !== '') search.set('f', f);
 		if (p > 1) search.set('p', String(p));
 		if (q.trim() !== '') search.set('q', q);
 		if (s !== 'all') search.set('s', s);
@@ -58,6 +80,15 @@
 {#if data.plants.length === 0}
 	<p class="muted">Още няма растения.</p>
 {:else}
+	<nav class="views" aria-label="Изглед">
+		<a href={catalogHref(query, params.s, params.n, 1)} aria-current={params.v === 'plants' ? 'page' : undefined}>Растения</a>
+		<a href={catalogHref('', 'all', params.n, 1, '', 'fam')} aria-current={params.v === 'fam' ? 'page' : undefined}>Семейства</a>
+	</nav>
+{/if}
+
+{#if data.plants.length > 0 && params.v === 'fam'}
+	<FamilyIndex {groups} href={(latin) => catalogHref('', 'all', params.n, 1, latin)} />
+{:else if data.plants.length > 0}
 	<div class="filters">
 		<label class="search">
 			<span class="visually-hidden">Търси</span>
@@ -90,10 +121,17 @@
 		</fieldset>
 	</div>
 
+	{#if activeFamily}
+		<p class="family-chip">
+			<span>Семейство: <i>{activeFamily.latin}</i>{activeFamily.bg ? ` · ${activeFamily.bg}` : ''}</span>
+			<a href={catalogHref(query, params.s, params.n, 1, '')} aria-label="Махни филтъра за семейство">✕</a>
+		</p>
+	{/if}
+
 	<p class="muted count num" aria-live="polite">{visible.length} от {data.plants.length}</p>
 
 	{#if visible.length === 0}
-		<p class="muted">Няма растения, които отговарят на търсенето.</p>
+		<p class="muted">{query.trim() === '' && params.s === 'all' ? 'Няма растения в това семейство.' : 'Няма растения, които отговарят на търсенето.'}</p>
 	{:else}
 		<ul class="grid" aria-label="Растения">
 			{#each shown.items as plant (plant.id)}
@@ -147,6 +185,48 @@
 	.status input { position: absolute; opacity: 0; pointer-events: none; }
 	.status label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
 	.count { font-size: var(--text-sm); margin: 0 0 var(--space-3); }
+	.views {
+		display: inline-flex;
+		gap: 2px;
+		padding: 2px;
+		margin: var(--space-4) 0 var(--space-3);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+	}
+	.views a {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		padding: 0 var(--space-4);
+		border-radius: 999px;
+		color: var(--muted);
+		font-weight: 500;
+		text-decoration: none;
+	}
+	.views a[aria-current='page'] { background: var(--text); color: var(--bg); font-weight: 600; }
+	.views a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+	.family-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		margin: 0 0 var(--space-2);
+		padding-left: var(--space-3);
+		border: 1px solid var(--line-strong);
+		border-radius: 999px;
+		font-size: var(--text-sm);
+	}
+	.family-chip i { font-family: var(--font-display); }
+	.family-chip a {
+		min-width: 44px;
+		min-height: 44px;
+		display: inline-grid;
+		place-items: center;
+		color: var(--text);
+		text-decoration: none;
+		border-radius: 999px;
+	}
+	.family-chip a:hover { background: var(--surface-2); }
+	.family-chip a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 	.grid {
 		list-style: none;
 		padding: 0;

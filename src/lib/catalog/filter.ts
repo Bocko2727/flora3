@@ -1,6 +1,8 @@
 import type { IdStatus } from '$lib/status';
+import { isFamilyKey } from './families';
 
 export type StatusFilter = 'all' | IdStatus;
+export type CatalogView = 'plants' | 'fam';
 
 export const PAGE_SIZES = [15, 30, 45] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
@@ -33,15 +35,20 @@ export function paginate<T>(items: T[], page: number, size: PageSize): { items: 
 	return { items: items.slice((current - 1) * size, current * size), page: current, pages };
 }
 
-export function parseCatalogParams(params: URLSearchParams): { q: string; s: StatusFilter; n: PageSize; p: number } {
+export type CatalogParams = { q: string; s: StatusFilter; n: PageSize; p: number; f: string; v: CatalogView };
+
+export function parseCatalogParams(params: URLSearchParams): CatalogParams {
 	const s = params.get('s') ?? '';
 	const n = Number(params.get('n'));
 	const p = Number(params.get('p'));
+	const f = params.get('f') ?? '';
 	return {
 		q: params.get('q') ?? '',
 		s: STATUS_FILTERS.includes(s) ? (s as StatusFilter) : 'all',
 		n: (PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSize) : DEFAULT_PAGE_SIZE,
-		p: Number.isInteger(p) && p >= 1 ? p : 1
+		p: Number.isInteger(p) && p >= 1 ? p : 1,
+		f: isFamilyKey(f) ? f : '',
+		v: params.get('v') === 'fam' ? 'fam' : 'plants'
 	};
 }
 

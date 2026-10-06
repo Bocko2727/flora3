@@ -41,3 +41,11 @@
 Рискове / несигурност: <конкретно>
 Следващ: <коя роля и защо>
 ```
+
+## 2026-10-06 · developer (claude.ai сесия) · 3.2 feat/family-index
+Статус: DONE
+Резултат: изглед „Семейства“ (`?v=fam`), плочки на един екран, филтър `?f=Latin` с махащ се етикет; работи с търсене, статус и 15/30/45. Свободният текст на `family` само се чете (parseFamily), не се записва.
+Променени файлове: src/lib/catalog/families.ts (нов), src/lib/catalog/filter.ts, src/lib/components/FamilyIndex.svelte (нов), src/routes/+page.svelte, tests/unit/families.test.ts (нов), tests/unit/filter.test.ts, tests/e2e/flora.spec.ts
+Доказателства: db:reset OK · test:db PASS · unit 182/182 · integration 59/59 · e2e 19/19 (+ повторно „family index“ след поправките) · check 0 · build OK · screenshot-и 360/1280 (в чата). Ревизор: CHANGES → поправени т. 2, 3, 6, 7, 8, 9.
+Рискове / несигурност: клонът е от feat/library-pagination (PR #10) — да се merge-не след него. Отворени за собственика: `Adoxaceae / Viburnaceae` → показва се Viburnaceae; запазени имена (Compositae…) не се разпознават — в текущите 98 записа няма такива.
+Следващ: собственикът отваря PR и merge-ва; после 3.3 (въпроси за шрифтове и светъл режим).
