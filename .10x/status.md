@@ -1,38 +1,38 @@
 # Статус — Флора 3
-Обновено: 2026-10-06. Клон: `feat/library-pagination` (от `main` d08ef34).
+Обновено: 2026-10-06. Тук е само текущото състояние и предстоящото. Историята е в git (`git log`, PR-ите).
 
-## Production (пренесено от предишния статус; в тази сесия не е проверявано наново)
-- `main` = d08ef34 (влети #7 `fix/hooks-without-jq`, #8 `chore/claude-automation`, #9 `chore/prototype-handoff`). Deploy-ът във Vercel за този commit не е проверяван в тази сесия.
-- Хостнат flora3 (Supabase): в `supabase_migrations` са 5: init, explicit_grants, identification_status, editors_no_delete, legacy_review. В repo-то има 7 файла: `delete_plant` (функцията е налична в хоста, проверено 06.10) и `drop_self_confirm` (приложена през SQL Editor) липсват в историята.
-- 98 растения (97 стари + 1 от телефона), 118 снимки.
-- Преглед на старите растения (`/review`): решени 94 от 96; остават двете гъби (*Agaricales* sp., *Russula* sp.).
-- Backup: `backup.yml` е зелен — ръчен run #1 (2 окт.) и първи планиран run #2 (5 окт.) (по екранна снимка от собственика, 06.10). `Legacy import (one-off)`: run #1 зелен, run #2 червен; еднократен, отложен по решение на собственика.
-- Не ползвай `supabase db push` към хоста (версиите не съвпадат с имената на файловете).
+## Сега
+- `main` = production = `f2c53aa` (PR #14). Vercel production deploy: READY. Отворени PR-и: няма. CI (фаза A: `check`, `test:unit`, `build`) е зелен.
+- Хостнат Supabase (`lfmkjxcaokndltdylama`): 98 растения, 118 снимки.
+- Миграции: в `supabase_migrations` са 5 (init, explicit_grants, identification_status, editors_no_delete, legacy_review). `delete_plant` и `drop_self_confirm` са приложени, но липсват в историята. Не ползвай `supabase db push`.
+- `/review`: решени 94 от 96; остават двете гъби (*Agaricales* sp., *Russula* sp.).
+- Backup (`backup.yml`, седмичен pg_dump): зелен.
+- Визия „Хербарий“: зелена тема, светъл и тъмен режим, шрифтове Literata + Onest; страници 15/30/45; изглед „Семейства“.
+- Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
 
-## Работен процес (Project Instructions §5)
-- Свободно: клонове `feat/fix/chore` (commit, push), PR (отваряне), CI файлове на клон, четене.
-- Кратко „Одобрявам: …“: миграции в хоста, единични обратими промени в production данни, настройки във Vercel, Pl@ntNet над 20 заявки.
-- Пълен Approval Gate: secrets, пари/пакети/MCP, необратима загуба на данни, merge в `main`, force-push, стария проект.
-- Merge в `main` е само на собственика. Същото важи за GitHub/Supabase/Vercel MCP инструментите.
+## Следващи задачи (по ред)
+1. `feat/species-profile-qa` — профил като въпроси и отговори от `legacy_ai` („AI текст · непроверен“) + лента „Снимки по месеци“ (`docs/prototype/HANDOFF.md` §3.4).
+2. `feat/upload-many` — „Качи растение“ за няколко растения; една заявка към Pl@ntNet на растение (§3.5).
+3. `feat/picture-now` — камера на момента, същият поток (§3.6).
+4. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
+5. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
+6. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.
+7. P3: `feat/image-enhancer` (§3.7; производно копие, оригиналът не се пипа).
 
-## Прототип „Хербарий“ (docs/prototype/HANDOFF.md §3) — всяка точка е отделен клон и PR
-- **3.1 `feat/library-pagination` (този PR):** `PAGE_SIZES = [15, 30, 45]`, `DEFAULT_PAGE_SIZE = 15`; стари `?n=6/12` → 15. Unit + e2e обновени. e2e **не е пускан** (няма Docker; CI фаза A не пуска e2e).
-- 3.2 `feat/family-index`: готово, клон качен, чака PR (база: след #10).
-- 3.3 `feat/green-theme`: готово, клон качен, чака PR. Шрифтове: остават Literata + Onest; светъл + тъмен с бутон.
-- 3.4–3.7 по реда в HANDOFF.
-- Извън 3.1, за отделна точка: „‹ Назад · Напред ›“ в пагинацията (има го в прототипа).
+## Чака решение от собственика
+- Двете гъби в `/review` (кратко одобрение).
+- Svelte MCP и Playwright MCP (пълно одобрение).
+- Docker за локален Supabase на служебната машина (пълно одобрение).
+- Изтриване на влетите клонове в GitHub (сам; или „Automatically delete head branches“ в настройките).
+- Dependabot alerts в настройките на repo-то.
 
-## Локална среда (машината на собственика, 06.10)
-- Node.js 22.23.3 и gh 2.102.0 — преносими, само за потребителя (`%LOCALAPPDATA%\Programs\nodejs`, `...\Programs\gh\bin`, user PATH; MSI през winget спира на UAC). `npm ci` OK.
-- `check`: 0 errors · `test:unit`: 169/169 · `build`: компилира, но adapter-vercel пада на symlink (EPERM) — Windows иска Developer Mode; в CI/Vercel не засяга.
-- Няма Docker и `jq`. gh е логнат (Bocko2727, scope `repo`), но не е в PATH на Claude Code сесията — вика се с пълен път. GitHub MCP connector-ът няма право да пише в PR (403) — описания на PR се обновяват с `gh pr edit`.
-- В repo-то е зададен `user.email` = gmail адреса (локално, не глобално). По-старите commit-и до 5d8b8e9 са с служебния адрес.
-- `.claude/settings.json`: `git branch -D` е в `deny`; `git branch -d` пита (deny `git push * --delete*` блокира и триенето на влети клонове — собственикът ги трие сам).
+## Отложено (не се повдига, докато собственикът не каже)
+- Махане на `NEW_SUPABASE_SECRET_KEY` и `import-legacy.yml`.
+- Собствен домейн или промяна на Vercel Authentication; достъпът за зрител.
+- Гъбите като отделна категория.
 
-## Отворени задачи
-1. 9 влети клона в `origin` за изтриване (собственикът, ръчно): chore/github-tooling, chore/prototype-handoff, claude/design-polish-543trt, feat/ai-statuses-redesign, feat/flora3-v1, feat/legacy-review, fix/ai-polish, fix/hooks-without-jq, fix/post-launch-hardening.
-2. Docker за локален Supabase (Approval Gate — лиценз на Docker Desktop в организация).
-3. Фаза B на CI: локален Supabase + `db:reset` + `test:db` + `test:integration` + `test:e2e`.
-4. Двете гъби в `/review` (решение на собственика).
-5. Нов дизайн на `feat/redesign` (P1), след избор на посока.
-6. Svelte MCP (Approval Gate); Playwright MCP — не е нужен засега.
+## Локална среда (машината на собственика)
+- Node.js 22 и gh са преносими, само за потребителя; няма Docker и `jq`.
+- `build` компилира, но adapter-vercel пада на symlink (EPERM) под Windows без Developer Mode; в CI и Vercel не засяга.
+- GitHub MCP connector-ът няма право да пише; push и PR минават през `git`/`gh` (PR през REST, не GraphQL).
+- `.claude/settings.json` блокира `git push --delete` и `git branch -D`; влетите клонове ги трие собственикът.
