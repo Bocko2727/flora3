@@ -9,8 +9,8 @@ if command -v jq >/dev/null 2>&1; then
   CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty')
 else
   CMD=$(printf '%s' "$INPUT" | tr -d '\n\r' | sed -e 's/\\\\/ /g' -e "s/\\\\\"/'/g" \
-    | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-  [[ -z "$CMD" ]] && CMD=$INPUT
+    | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | sed 's/\\n/;/g')
+  [[ -z "$CMD" ]] && CMD=$(printf '%s' "$INPUT" | sed 's/\\n/;/g; s/"/;/g')
 fi
 [[ -z "$CMD" ]] && exit 0
 
