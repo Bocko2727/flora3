@@ -78,12 +78,14 @@ describe('paginate', () => {
 
 describe('parseCatalogParams', () => {
 	it('falls back to defaults for missing and invalid values', () => {
-		expect(parseCatalogParams(new URLSearchParams(''))).toEqual({ q: '', s: 'all', n: 15, p: 1 });
+		expect(parseCatalogParams(new URLSearchParams(''))).toEqual({ q: '', s: 'all', n: 15, p: 1, f: '', v: 'plants' });
 		expect(parseCatalogParams(new URLSearchParams('n=7&p=-3&s=xyz&q=%20лай'))).toEqual({
 			q: ' лай',
 			s: 'all',
 			n: 15,
-			p: 1
+			p: 1,
+			f: '',
+			v: 'plants'
 		});
 		expect(parseCatalogParams(new URLSearchParams('p=1.5'))).toMatchObject({ p: 1 });
 		expect(parseCatalogParams(new URLSearchParams('p=abc'))).toMatchObject({ p: 1 });
@@ -97,7 +99,9 @@ describe('parseCatalogParams', () => {
 			q: '',
 			s: 'community',
 			n: 30,
-			p: 3
+			p: 3,
+			f: '',
+			v: 'plants'
 		});
 		expect(parseCatalogParams(new URLSearchParams('n=45'))).toMatchObject({ n: 45 });
 	});
@@ -116,5 +120,18 @@ describe('pageWindow', () => {
 	it('shows a single skipped page instead of an ellipsis', () => {
 		expect(pageWindow(4, 17)).toEqual([1, 2, 3, 4, 5, null, 17]);
 		expect(pageWindow(14, 17)).toEqual([1, null, 13, 14, 15, 16, 17]);
+	});
+});
+
+describe('parseCatalogParams: family and view', () => {
+	it('reads a Latin family key and the families view', () => {
+		expect(parseCatalogParams(new URLSearchParams('f=Asteraceae'))).toMatchObject({ f: 'Asteraceae', v: 'plants' });
+		expect(parseCatalogParams(new URLSearchParams('v=fam'))).toMatchObject({ f: '', v: 'fam' });
+	});
+	it('ignores family keys that are not a plain Latin word and unknown views', () => {
+		expect(parseCatalogParams(new URLSearchParams('f=asteraceae'))).toMatchObject({ f: '' });
+		expect(parseCatalogParams(new URLSearchParams('f=Aster%20aceae'))).toMatchObject({ f: '' });
+		expect(parseCatalogParams(new URLSearchParams('f=%3Cscript%3E'))).toMatchObject({ f: '' });
+		expect(parseCatalogParams(new URLSearchParams('v=list'))).toMatchObject({ v: 'plants' });
 	});
 });
