@@ -1,0 +1,1088 @@
+<title>Флора 3 · хербарий прототип</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400;1,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a forest-green herbarium cabinet — green masthead with the drawer tabs, pale sage paper below, specimen cards grouped by family */
+:root{
+  --paper:#EDF2EA; --sheet:#FAFCF7; --ink:#15261C; --muted:#53685A; --line:#C9D6C6;
+  --forest:#1F4430; --forest-2:#2A5A3F; --on-forest:#EEF4E8; --on-forest-muted:#B3CAB8; --gold:#C9A24A;
+  --sage:#2F6B45; --stamp:#2F6B45; --stamp-soft:#DDEBDD; --warn:#875A12; --warn-soft:#F5E8CF;
+  --bad:#9A2F2F; --bad-soft:#F4DEDB; --ok:#2F6B3B; --ok-soft:#DCEBDD;
+  --photo-bg:#1F4430; --plate:#EEF3EA; --ph-l:89%; --ph-ink-l:62%;
+  --petal-pink:#C24C8A; --petal-blue:#5A6FC2; --wool:#FFFFFF; --wool-edge:#9FA79A; --stem:#4D7A45;
+  --shadow:0 1px 2px rgba(21,38,28,.06),0 10px 24px -16px rgba(21,38,28,.35);
+  --f-display:"Spectral", Georgia, "Times New Roman", serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#132A1E; --sheet:#1A3527; --ink:#E5EFE3; --muted:#A2BCA9; --line:#2E4F3B;
+  --forest:#1B3D2A; --forest-2:#24503A; --on-forest:#EEF4E8; --on-forest-muted:#A9C4AF; --gold:#D8B460;
+  --sage:#93CBA0; --stamp:#93CBA0; --stamp-soft:#22442F; --warn:#E6BC6E; --warn-soft:#3B3219;
+  --bad:#EE9F97; --bad-soft:#43272A; --ok:#93CBA0; --ok-soft:#22442F;
+  --photo-bg:#1B3D2A; --plate:#1F3D2D; --ph-l:24%; --ph-ink-l:48%;
+  --petal-pink:#E27AB0; --petal-blue:#8E9FE6; --wool:#E9ECE6; --wool-edge:#7C877E; --stem:#7FAE73;
+  --shadow:0 1px 2px rgba(0,0,0,.2),0 12px 26px -16px rgba(0,0,0,.6); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#132A1E; --sheet:#1A3527; --ink:#E5EFE3; --muted:#A2BCA9; --line:#2E4F3B;
+  --forest:#1B3D2A; --forest-2:#24503A; --on-forest:#EEF4E8; --on-forest-muted:#A9C4AF; --gold:#D8B460;
+  --sage:#93CBA0; --stamp:#93CBA0; --stamp-soft:#22442F; --warn:#E6BC6E; --warn-soft:#3B3219;
+  --bad:#EE9F97; --bad-soft:#43272A; --ok:#93CBA0; --ok-soft:#22442F;
+  --photo-bg:#1B3D2A; --plate:#1F3D2D; --ph-l:24%; --ph-ink-l:48%;
+  --petal-pink:#E27AB0; --petal-blue:#8E9FE6; --wool:#E9ECE6; --wool-edge:#7C877E; --stem:#7FAE73;
+  --shadow:0 1px 2px rgba(0,0,0,.2),0 12px 26px -16px rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--f-body);margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:1.9rem} h2{font-size:1.35rem} h3{font-size:1.08rem}
+i.sci,.sci{font-family:var(--f-display);font-style:italic}
+.eyebrow{font:500 .72rem/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{color:var(--muted);max-width:68ch;margin:0}
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--stamp-soft);color:var(--ink);border-radius:8px;padding:10px 14px;font-size:.88rem}
+.notice b{color:var(--stamp)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:44px;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.chip[aria-pressed="true"]{border-color:var(--stamp);box-shadow:inset 0 0 0 1px var(--stamp)}
+.chip:focus-visible,.tab:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.tab{border:0;background:none;color:var(--muted);font:500 .92rem var(--f-body);padding:12px 14px;min-height:44px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--stamp)}
+.panel{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px}
+@media (max-width:720px){.grid2{grid-template-columns:1fr}}
+.tag{display:inline-flex;align-items:center;gap:4px;font:500 .72rem/1 var(--f-mono);letter-spacing:.04em;padding:4px 7px;border-radius:4px;white-space:nowrap}
+.t-ai{background:var(--warn-soft);color:var(--warn)} .t-ok{background:var(--ok-soft);color:var(--ok)}
+.t-bad{background:var(--bad-soft);color:var(--bad)} .t-ex{background:transparent;color:var(--muted);border:1px dashed var(--muted)}
+.t-st{background:var(--stamp-soft);color:var(--stamp)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+dl.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0;font-size:.92rem}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0}
+.plate{background:var(--plate);border-radius:8px;aspect-ratio:3/4;max-width:100%;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.plate svg{width:78%;height:78%}
+.plate .cap{position:absolute;left:8px;bottom:8px;font:500 .7rem var(--f-mono);color:var(--muted)}
+/* observations */
+.timeline{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.obs{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start;border-left:2px solid var(--sage);padding-left:12px}
+.obs .when{font:500 .85rem var(--f-mono);color:var(--sage);font-variant-numeric:tabular-nums}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumb{width:84px;display:flex;flex-direction:column;gap:4px}
+.thumb .plate{aspect-ratio:3/4}
+.thumb select{font:inherit;font-size:.75rem;border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:4px;padding:6px 4px;min-height:36px}
+.organs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:6px}
+@media (max-width:480px){.organs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.organ{border:1px solid var(--line);border-radius:6px;padding:8px 6px;text-align:center;font-size:.8rem}
+.organ.has{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.organ.miss{color:var(--muted);border-style:dashed}
+/* phenology */
+.months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px;margin-top:8px}
+.m{height:30px;border-radius:3px;background:var(--line);display:flex;align-items:flex-end;justify-content:center;font:500 .66rem var(--f-mono);color:var(--muted);padding-bottom:2px}
+.m.on{background:var(--sage);color:var(--sheet)}
+/* herbarium sheet */
+.sheetwrap{display:flex;justify-content:center}
+.hsheet{background:var(--sheet);border:1px solid var(--line);width:100%;max-width:560px;aspect-ratio:29/42;position:relative;padding:22px;box-shadow:0 1px 0 var(--line),0 12px 30px -18px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.hsheet .specimen{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.hsheet .specimen svg{height:92%;max-width:70%}
+.hsheet .barcode{position:absolute;top:18px;left:22px;font:500 .7rem var(--f-mono);color:var(--muted);letter-spacing:.1em}
+.hsheet .stampmark{position:absolute;top:16px;right:20px;border:2px solid var(--stamp);color:var(--stamp);border-radius:50%;width:74px;height:74px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 .58rem/1.2 var(--f-mono);letter-spacing:.05em;transform:rotate(-12deg);opacity:.85}
+.label{align-self:flex-end;width:min(100%,300px);border:1px solid var(--ink);padding:10px 12px;font-size:.78rem;line-height:1.45;background:var(--sheet)}
+.label .lh{font:600 .66rem var(--f-mono);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--ink);padding-bottom:4px;margin-bottom:6px;display:flex;justify-content:space-between}
+.label .ln{font-family:var(--f-display);font-size:1.05rem;font-style:italic;line-height:1.2}
+.label .row2{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 8px}
+.label .row2 span:nth-child(odd){color:var(--muted)}
+.qr{position:absolute;left:22px;bottom:22px;width:58px;height:58px;border:1px dashed var(--muted);display:flex;align-items:center;justify-content:center;font:500 .55rem var(--f-mono);color:var(--muted);text-align:center}
+/* search */
+.search{display:flex;gap:8px}
+.search input{flex:1;min-width:0;font:inherit;font-size:1rem;padding:10px 14px;min-height:48px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink)}
+.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.res{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--sheet)}
+.res .mini{width:44px;flex:none}
+.res .why{font-size:.8rem;color:var(--muted)}
+mark{background:var(--warn-soft);color:var(--ink);border-radius:2px;padding:0 2px}
+/* health */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.88rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 .72rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.c{text-align:center}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+.score{font:600 1.6rem var(--f-display);font-variant-numeric:tabular-nums}
+/* library */
+.libbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.libbar input,.libbar select{font:inherit;min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink)}
+.libbar input{flex:1 1 100%;min-width:0}
+.libbar select{flex:1 1 140px;min-width:0}
+@media (min-width:720px){.libbar input{flex-basis:220px}}
+.count{font:500 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+@media (max-width:420px){.libgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.lcard{display:flex;flex-direction:column;text-align:left;border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:10px;overflow:hidden;cursor:pointer;font:inherit;padding:0}
+.lcard:hover{border-color:var(--sage)} .lcard:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.lcard .ph{aspect-ratio:4/3;background:var(--plate);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.lcard .ph svg{height:88%;width:auto;max-width:100%;position:absolute;top:6%}
+.lcard .ph .ini{font:600 2rem var(--f-display);color:var(--line)}
+.lcard .ph .n{position:absolute;right:6px;bottom:6px;font:500 .68rem var(--f-mono);color:var(--muted);background:var(--sheet);border-radius:4px;padding:2px 5px}
+.lcard .ph .iss{position:absolute;left:6px;top:6px}
+.lcard .tx{padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lcard .bn{font:600 .95rem/1.25 var(--f-display)}
+.lcard .sn{font:italic .82rem var(--f-display);color:var(--sage);overflow-wrap:anywhere}
+.famhead{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px;margin-top:8px}
+.famhead h3{font-size:1rem} .famhead span{font:.8rem var(--f-mono);color:var(--muted)}
+/* profile (Flora 2 detail format) */
+.ovl{position:fixed;inset:0;background:rgba(10,14,11,.55);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.prof{background:var(--sheet);border-radius:12px;overflow:hidden;width:min(1060px,100%);max-height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);position:relative}
+@media (max-width:760px){.prof{grid-template-columns:1fr;overflow-y:auto}}
+.prof .pv{background:var(--photo-bg);display:flex;align-items:center;justify-content:center;min-height:260px}
+.prof .pv svg{width:62%;max-height:min(420px,70vh)}
+.prof .pv .ini{font:600 4rem var(--f-display);color:rgba(255,255,255,.18)}
+.prof .pt{overflow-y:auto;padding:26px 28px 32px;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:760px){.prof .pt{overflow:visible;padding:20px 18px 28px}}
+.prof h2{font-size:1.75rem;padding-right:44px}
+.prof .ps{font:italic 1.1rem var(--f-display);color:var(--sage);margin-top:-8px}
+.prof .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px;border-block:1px solid var(--line);padding-block:12px}
+.prof .meta .k{font:600 .75rem var(--f-body);color:var(--muted)}
+.prof .qa h3{color:var(--sage);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.prof .qa p{margin:6px 0 0;max-width:68ch}
+.prof .qa .warn{margin-top:6px;font-size:.85rem;color:var(--warn)}
+.prof .x{position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font-size:1.2rem;cursor:pointer;z-index:2}
+.tag.t-src{background:transparent;color:var(--warn);border:1px solid var(--warn);font-family:var(--f-display);font-weight:600}
+.temp{font:500 .62rem var(--f-mono);color:var(--warn);margin-left:4px;letter-spacing:.04em}
+/* health filters */
+.hchips{display:flex;gap:6px;flex-wrap:wrap}
+.hchip{font:inherit;font-size:.82rem;min-height:40px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer}
+.hchip[aria-pressed="true"]{border-color:var(--stamp);box-shadow:inset 0 0 0 1px var(--stamp)}
+.hchip b{font-variant-numeric:tabular-nums}
+.opts{display:flex;flex-direction:column;gap:8px}
+.btn{font:inherit;min-height:44px;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer;text-align:left}
+.btn.primary{background:var(--stamp);color:var(--sheet);border-color:var(--stamp);text-align:center}
+.btn.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.btn.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.btn[disabled]{cursor:default}
+/* history */
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.hist li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;font-size:.9rem}
+.hist .d{font:500 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.diff{font:.8rem var(--f-mono);margin-top:4px}
+.diff .del{color:var(--bad);text-decoration:line-through} .diff .add{color:var(--ok)}
+.trash{border:1px dashed var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.foot{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:no-preference){.panel{animation:fade .25s ease}@keyframes fade{from{opacity:.4}to{opacity:1}}}
+
+/* masthead */
+.mast{background:var(--forest);color:var(--on-forest);position:relative;overflow:hidden}
+.mast .in{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:28px 0;display:flex;flex-direction:column;gap:10px;position:relative;z-index:1}
+.mast .eyebrow{color:var(--on-forest-muted)}
+.mast h1{font-size:clamp(1.9rem,5vw,2.7rem);letter-spacing:-.01em}
+.mast h1 em{font-weight:400;color:var(--gold)}
+.mast .lede{color:var(--on-forest-muted)}
+.mast .stats{display:flex;gap:6px 18px;flex-wrap:wrap;font:500 .8rem var(--f-mono);color:var(--on-forest-muted);font-variant-numeric:tabular-nums}
+.mast .stats b{color:var(--on-forest);font-weight:500}
+.mast .frond{position:absolute;right:-30px;top:-20px;height:130%;color:var(--on-forest);opacity:.07;pointer-events:none}
+@media (max-width:640px){.mast .frond{opacity:.05;right:-90px}}
+.mast .tabs{border-bottom:0;margin-top:14px;gap:4px}
+.mast .tab{color:var(--on-forest-muted);border-bottom:3px solid transparent}
+.mast .tab:hover{color:var(--on-forest)}
+.mast .tab[aria-selected="true"]{color:var(--on-forest);border-bottom-color:var(--gold)}
+.mast .tab:focus-visible{outline-color:var(--gold)}
+.mast .temp{color:var(--gold)}
+.lcard{box-shadow:var(--shadow);transition:transform .18s ease, box-shadow .18s ease}
+@media (prefers-reduced-motion:no-preference){.lcard:hover{transform:translateY(-2px)}}
+.lcard .ph{background:hsl(var(--h,130) 22% var(--ph-l))}
+.lcard .ph .ini{font:italic 600 2.4rem var(--f-display);color:hsl(var(--h,130) 25% var(--ph-ink-l))}
+.famhead{border-bottom:0;padding-bottom:0;margin-top:22px;gap:12px;align-items:center}
+.famhead h3{font-style:italic;font-size:1.2rem;color:var(--sage)}
+.famhead .bgf{font:600 .95rem var(--f-display);color:var(--ink)}
+.famhead .pill{font:500 .72rem var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.famhead::after{content:"";flex:1;height:1px;background:var(--line)}
+.prof .pv{background:radial-gradient(120% 90% at 30% 20%,var(--forest-2),var(--photo-bg))}
+.prof .meta{border-top:2px solid var(--gold)}
+.pheno{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px;margin-top:6px}
+.pheno span{height:24px;border-radius:3px;background:var(--line);display:flex;align-items:center;justify-content:center;font:500 .62rem var(--f-mono);color:var(--muted)}
+.pheno span.on{background:var(--sage);color:var(--sheet)}
+.k{font:600 .75rem var(--f-body);color:var(--muted)}
+
+/* ===== Elevation layer =====
+   Radii: 6 controls · 12 cards · 16 dialog. Spacing: 4/8/12/16/24/32/48.
+   Shadows tinted forest-green, never neutral black. Display type tracked tight. */
+:root{--sel-bg:#1F4430;--sel-fg:#EEF4E8;--r-sm:6px;--r-md:12px;--r-lg:16px;
+  --sh-1:0 1px 2px rgba(31,68,48,.06),0 1px 1px rgba(31,68,48,.04);
+  --sh-2:0 2px 4px rgba(31,68,48,.06),0 12px 24px -12px rgba(31,68,48,.28);
+  --sh-3:0 24px 64px -16px rgba(12,34,22,.55);
+  --line-soft:color-mix(in srgb,var(--line) 70%,transparent)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sel-bg:#93CBA0;--sel-fg:#132A1E;--sh-1:0 1px 2px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.2),0 14px 28px -14px rgba(0,0,0,.55);--sh-3:0 28px 70px -18px rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--sel-bg:#93CBA0;--sel-fg:#132A1E;--sh-1:0 1px 2px rgba(0,0,0,.25);--sh-2:0 2px 4px rgba(0,0,0,.2),0 14px 28px -14px rgba(0,0,0,.55);--sh-3:0 28px 70px -18px rgba(0,0,0,.7)}
+body{font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2{letter-spacing:-.02em} h3{letter-spacing:-.005em}
+.wrap{gap:24px;padding-block:32px 64px}
+.mast .in{padding-block:44px 0;gap:12px}
+.mast .eyebrow{letter-spacing:.14em}
+.mast h1{font-size:clamp(2.1rem,5.5vw,3.2rem);line-height:1.05;font-weight:600}
+.mast .lede{font-size:1rem;max-width:56ch}
+.mast .stats{gap:0;margin-top:4px}
+.mast .stats span{padding-inline:14px;border-left:1px solid rgba(238,244,232,.18)}
+.mast .stats span:first-child{padding-left:0;border-left:0}
+@media (max-width:480px){.mast .stats{row-gap:6px}.mast .stats span{padding-inline:10px}}
+.mast .tabs{margin-top:20px}
+.mast .tab{font-size:.95rem;padding:14px 16px;transition:color .15s ease}
+.notice{border-radius:var(--r-md);padding:12px 16px;background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.notice b{color:var(--ink)}
+/* controls */
+.libbar input,.libbar select,.search input{border-radius:var(--r-sm);border-color:var(--line);background-color:var(--sheet);box-shadow:var(--sh-1);transition:border-color .15s ease,box-shadow .15s ease}
+.libbar input:focus,.libbar select:focus,.search input:focus{outline:none;border-color:var(--sage);box-shadow:0 0 0 3px color-mix(in srgb,var(--sage) 22%,transparent)}
+.libbar select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+.search input{padding-left:44px;font-size:1.05rem;min-height:52px;
+  background-image:radial-gradient(circle at 21px 23px,transparent 6px,var(--muted) 6.5px,var(--muted) 8px,transparent 8.5px),linear-gradient(45deg,transparent 46%,var(--muted) 46%,var(--muted) 56%,transparent 56%);
+  background-size:auto,7px 7px;background-position:0 0,27px 29px;background-repeat:no-repeat}
+.btn,.chip,.hchip{transition:border-color .15s ease,background-color .15s ease}
+.btn:hover,.chip:hover,.hchip:hover{border-color:var(--sage)}
+.btn{border-radius:var(--r-sm)}
+.tag{border-radius:4px}
+/* library */
+.count{letter-spacing:.02em}
+.famhead{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding-block:12px 10px;margin-top:16px}
+.libgrid{gap:16px}
+.lcard{border-radius:var(--r-md);border-color:var(--line-soft);box-shadow:var(--sh-1);transition:transform .2s ease-out,box-shadow .2s ease-out,border-color .2s ease-out}
+.lcard:hover{box-shadow:var(--sh-2);border-color:color-mix(in srgb,var(--sage) 45%,var(--line))}
+.lcard .ph .n{background:color-mix(in srgb,var(--sheet) 82%,transparent);backdrop-filter:blur(4px);border-radius:999px;padding:2px 8px;right:8px;bottom:8px}
+.lcard .ph .iss{left:8px;top:8px}
+.lcard .tx{padding:12px 14px 14px;gap:4px}
+.lcard .bn{font-size:1rem;letter-spacing:-.005em}
+/* profile dialog */
+.ovl{background:rgba(12,30,20,.58);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+@media (prefers-reduced-motion:no-preference){.ovl{animation:ovlIn .2s ease-out}.prof{animation:profIn .24s ease-out}
+  @keyframes ovlIn{from{opacity:0}to{opacity:1}} @keyframes profIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}}
+.prof{border-radius:var(--r-lg);box-shadow:var(--sh-3)}
+.prof .pt{padding:32px 32px 40px;gap:16px}
+.prof h2{font-size:2rem;line-height:1.1}
+.prof .ps{font-size:1.15rem;margin-top:-6px}
+.prof .x{background:color-mix(in srgb,var(--sheet) 85%,transparent);backdrop-filter:blur(6px);border-color:var(--line-soft);transition:background-color .15s ease}
+.prof .x:hover{background:var(--sheet)}
+.prof .meta{gap:12px 24px;padding-block:16px}
+.prof .qa{padding-top:16px;border-top:1px solid var(--line-soft)}
+.prof .qa h3{font-size:1.1rem;gap:10px}
+.prof .qa p{line-height:1.65}
+.tag.t-src{font:500 .66rem var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:999px}
+.pheno span{border-radius:4px;transition:background-color .2s ease}
+/* health */
+.card{border-radius:var(--r-md);border-color:var(--line-soft);box-shadow:var(--sh-1)}
+.hchip{border-radius:999px}
+.tablewrap{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--sheet);box-shadow:var(--sh-1)}
+th{position:sticky;top:0;background:var(--sheet)}
+tbody tr{transition:background-color .15s ease}
+tbody tr:hover{background:color-mix(in srgb,var(--sage) 6%,transparent)}
+tbody tr:last-child td{border-bottom:0}
+/* herbarium sheet */
+.hsheet{box-shadow:var(--sh-2);border-color:var(--line-soft)}
+.res{border-radius:var(--r-md);border-color:var(--line-soft);box-shadow:var(--sh-1);transition:box-shadow .2s ease-out,border-color .2s ease-out}
+.res:hover{box-shadow:var(--sh-2);border-color:color-mix(in srgb,var(--sage) 45%,var(--line))}
+.foot{border-top:1px solid var(--line-soft);padding-top:16px;font-size:.8rem}
+
+/* actions */
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.abtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 16px;border-radius:var(--r-sm);font:500 .92rem var(--f-body);cursor:pointer;
+  background:rgba(238,244,232,.08);color:var(--on-forest);border:1px solid rgba(238,244,232,.22);transition:background-color .15s ease,border-color .15s ease}
+.abtn:hover{background:rgba(238,244,232,.14);border-color:rgba(238,244,232,.4)}
+.abtn.main{background:var(--gold);color:#1B2A1F;border-color:var(--gold);font-weight:600}
+.abtn.main:hover{background:color-mix(in srgb,var(--gold) 88%,#fff)}
+.abtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.abtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width:480px){.abtn{flex:1 1 auto;justify-content:center}.abtn.main{flex-basis:100%}}
+/* library collapse + pages */
+.libtools{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.libtools .count{margin:0}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:.85rem}
+.btn.cur{background:var(--sel-bg);color:var(--sel-fg);border-color:var(--sel-bg)}
+.btn[disabled]{opacity:.45;cursor:default}
+details.fam{border-bottom:1px solid var(--line-soft)}
+details.fam > summary{list-style:none;cursor:pointer;margin-top:0;padding-block:14px;flex-wrap:wrap;row-gap:4px}
+details.fam > summary::-webkit-details-marker{display:none}
+details.fam > summary::after{display:none}
+details.fam > summary:hover h3{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+details.fam > summary:focus-visible{outline:2px solid var(--sage);outline-offset:2px;border-radius:4px}
+.chev{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;flex:none;transition:transform .2s ease}
+.chev::before{content:"";width:6px;height:6px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:translateY(-1px) rotate(45deg)}
+details.fam:not([open]) .chev{transform:rotate(-90deg)}
+.prev{flex:1 1 100%;padding-left:34px;font-size:.84rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+details.fam[open] .prev{display:none}
+details.fam > .libgrid{padding-block:4px 20px}
+.famhead.static{position:static;background:none;backdrop-filter:none}
+.drafts{background:color-mix(in srgb,var(--gold) 9%,transparent);border:1px dashed color-mix(in srgb,var(--gold) 60%,transparent);border-radius:var(--r-md);padding:4px 16px 16px}
+.pager{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:20px}
+.pager .count{margin-left:auto}
+.lcard .ph.photo img,.prof .pv.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.lcard .ph.photo{background:var(--photo-bg)}
+.prof .pv.photo{padding:0}
+.prof .pv.photo img{max-height:none;aspect-ratio:auto}
+@media (min-width:761px){.prof .pv.photo img{position:absolute;inset:0}.prof .pv.photo{position:relative}}
+.enhb{position:absolute;left:8px;bottom:8px;font:500 .66rem var(--f-mono);background:var(--gold);color:#1B2A1F;border-radius:999px;padding:2px 8px}
+/* modal */
+.mbox{background:var(--sheet);border-radius:var(--r-lg);box-shadow:var(--sh-3);width:min(880px,100%);max-height:100%;overflow-y:auto;padding:28px;display:flex;flex-direction:column;gap:20px}
+@media (max-width:560px){.mbox{padding:20px 16px}}
+@media (prefers-reduced-motion:no-preference){.mbox{animation:profIn .24s ease-out}}
+.mh{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.mh h2{font-size:1.6rem}
+.msub{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.mh .x{position:static;flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line-soft);background:var(--sheet);color:var(--ink);font-size:1.1rem;cursor:pointer}
+.modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.modes{grid-template-columns:1fr}}
+.mode{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;cursor:pointer;transition:border-color .15s ease,background-color .15s ease}
+.mode:has(input:checked){border-color:var(--sage);background:color-mix(in srgb,var(--sage) 7%,transparent)}
+.mode input{margin-top:4px;accent-color:var(--sage);width:18px;height:18px}
+.mode b{display:block} .mode small{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;border:2px dashed var(--line);border-radius:var(--r-md);padding:40px 16px;cursor:pointer;color:var(--muted);transition:border-color .15s ease,background-color .15s ease}
+.drop svg{width:44px;height:44px;color:var(--sage)}
+.drop b{color:var(--ink);font-size:1.05rem}
+.drop:hover,.drop.over{border-color:var(--sage);background:color-mix(in srgb,var(--sage) 6%,transparent)}
+.drop:focus-within{outline:2px solid var(--sage);outline-offset:2px}
+.pgrid,.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.egrid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.pthumb{margin:0;border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden;background:var(--paper);display:flex;flex-direction:column}
+.pthumb.bad{border-color:var(--bad)}
+.pimg{aspect-ratio:1;position:relative;background:var(--plate);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.8rem}
+.pimg img{width:100%;height:100%;object-fit:cover}
+.pthumb.bad .pimg img{opacity:.45}
+.rm{position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(12,30,20,.6);color:#fff;cursor:pointer}
+.pthumb figcaption{padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:.78rem;min-width:0}
+.fn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fm{color:var(--muted);font-family:var(--f-mono);font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fo{color:var(--ok)} .fe{color:var(--bad)} .fw{color:var(--warn)}
+.pthumb.add{align-items:center;justify-content:center;border-style:dashed;min-height:150px;cursor:pointer;color:var(--sage);font-weight:600}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line-soft);padding-top:16px}
+.btn.primary{background:var(--forest);color:var(--on-forest);border-color:var(--forest);font-weight:600}
+.btn.primary:hover{background:var(--forest-2)}
+.plist{display:flex;flex-direction:column;gap:12px}
+.pl{display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;border:1px solid var(--line-soft);border-radius:var(--r-md);padding:12px}
+@media (max-width:560px){.pl{grid-template-columns:1fr}}
+.plph{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;align-content:start;position:relative}
+.plph img,.plph span{aspect-ratio:1;width:100%;object-fit:cover;border-radius:6px;background:var(--plate)}
+.plph img:only-child{grid-column:span 2}
+.plph .more{position:absolute;right:4px;bottom:4px;aspect-ratio:auto;width:auto;background:rgba(12,30,20,.65);color:#fff;font:500 .72rem var(--f-mono);padding:2px 6px}
+.plbody{display:flex;flex-direction:column;gap:10px;min-width:0}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:.88rem}
+.steps li{display:flex;gap:10px;align-items:center}
+.si{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem}
+.si.done{background:var(--ok);border-color:var(--ok);color:var(--sheet)}
+.si.skip{border-style:dashed;color:var(--muted)}
+.si.run{border-color:var(--sage);border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.si.run{animation:none;background:var(--stamp-soft)}}
+.cands{border:1px dashed var(--line);border-radius:var(--r-sm);padding:12px;display:flex;flex-direction:column;gap:8px;font-size:.86rem}
+.cands p{margin:0;color:var(--muted)}
+.sk{height:12px;border-radius:4px;background:linear-gradient(90deg,var(--line-soft),var(--plate),var(--line-soft));background-size:200% 100%;animation:sh 1.6s ease-in-out infinite}
+.sk.short{width:55%}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+.nm{display:flex;flex-direction:column;gap:6px;font-size:.85rem;color:var(--muted)}
+.nm input{font:inherit;font-size:.95rem;color:var(--ink);min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sheet)}
+.nm input:focus{outline:none;border-color:var(--sage);box-shadow:0 0 0 3px color-mix(in srgb,var(--sage) 22%,transparent)}
+.empty{border:1px dashed var(--line);border-radius:var(--r-md);padding:24px;display:flex;flex-direction:column;gap:12px}
+.empty p{margin:0}
+.ecard{border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden;background:var(--paper);display:flex;flex-direction:column;transition:border-color .15s ease,box-shadow .15s ease}
+.ecard.on{border-color:var(--sage);box-shadow:0 0 0 2px color-mix(in srgb,var(--sage) 35%,transparent)}
+.epick{position:relative;display:block;aspect-ratio:4/3;cursor:pointer}
+.epick img{width:100%;height:100%;object-fit:cover;display:block}
+.epick input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.epick .box{position:absolute;top:10px;left:10px;width:26px;height:26px;border-radius:6px;background:rgba(250,252,247,.9);border:1.5px solid var(--forest)}
+.epick input:checked + .box{background:var(--forest)}
+.epick input:checked + .box::after{content:"";position:absolute;left:8px;top:3px;width:6px;height:12px;border:solid var(--on-forest);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.epick input:focus-visible + .box{outline:2px solid var(--gold);outline-offset:2px}
+.busy{position:absolute;inset:auto 8px 8px 8px;background:rgba(12,30,20,.75);color:#fff;font-size:.8rem;border-radius:6px;padding:6px 8px}
+.busy.err{background:var(--bad)}
+.cmp{position:relative;aspect-ratio:4/3;overflow:hidden;--p:50%}
+.cmp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp .after{clip-path:inset(0 0 0 var(--p))}
+.cmp::after{content:"";position:absolute;top:0;bottom:0;left:var(--p);width:2px;background:var(--gold);pointer-events:none}
+.cmp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.cmp .lbl{position:absolute;top:8px;font:500 .66rem var(--f-mono);background:rgba(12,30,20,.65);color:#fff;padding:2px 6px;border-radius:4px;pointer-events:none}
+.cmp .lbl.l{left:8px} .cmp .lbl.r{right:8px}
+.emeta{padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:.8rem;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;align-self:flex-start}
+.seg label{cursor:pointer}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.8rem;min-height:32px}
+.seg input:checked + span{background:var(--forest);color:var(--on-forest)}
+.seg input:focus-visible + span{outline:2px solid var(--gold)}
+label.btn{display:inline-flex;align-items:center;cursor:pointer}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--forest);color:var(--on-forest);padding:12px 18px;border-radius:var(--r-md);box-shadow:var(--sh-3);font-size:.9rem;max-width:calc(100% - 32px)}
+
+/* library v3 */
+.viewbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.seg.big{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--sheet);box-shadow:var(--sh-1)}
+.seg.big button{font:500 .92rem var(--f-body);border:0;background:none;color:var(--muted);padding:8px 18px;min-height:40px;border-radius:999px;cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.seg.big button[aria-pressed="true"]{background:var(--sel-bg);color:var(--sel-fg)}
+.seg.big button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.libbar select#libsize{flex:0 1 160px}
+.fchip{display:inline-flex;align-items:center;gap:6px;background:var(--sel-bg);color:var(--sel-fg);border-radius:999px;padding:4px 4px 4px 12px;font-size:.85rem}
+.fchip i{font-family:var(--f-display)}
+.fchip button{width:28px;height:28px;border-radius:50%;border:0;background:rgba(238,244,232,.15);color:inherit;cursor:pointer}
+.pager .gap{color:var(--muted);padding-inline:4px}
+.famgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:8px}
+@media (max-width:420px){.famgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.famtile{padding:6px 8px}.famtile .bar{display:none}.famtile i{font-size:.88rem}}
+.famtile{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--line-soft);border-left:4px solid hsl(var(--h) 30% 45%);border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;box-shadow:var(--sh-1);transition:border-color .15s ease,box-shadow .15s ease;min-width:0}
+.famtile:hover{box-shadow:var(--sh-2);border-color:color-mix(in srgb,var(--sage) 45%,var(--line))}
+.famtile:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.famtile .ft{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.famtile i{font:italic 600 .95rem var(--f-display);color:var(--sage);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.famtile b{font:500 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.famtile .fb{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.famtile .bar{height:3px;background:var(--line-soft);border-radius:2px;margin-top:4px;overflow:hidden}
+.famtile .bar span{display:block;height:100%;background:hsl(var(--h) 30% 45%)}
+</style>
+
+<header class="mast">
+  <svg class="frond" viewBox="0 0 200 400" aria-hidden="true" id="frond"></svg>
+  <div class="in">
+    <span class="eyebrow">Флора 3 · прототип · 06.10.2026</span>
+    <h1>Хербарий <em>на Флора 3</em></h1>
+    <p class="lede">Всичките реални записа от базата, подредени като библиотека. Базата е само прочетена, нищо в приложението не е променено.</p>
+    <div class="stats" id="stats"></div>
+    <div class="actions">
+      <button class="abtn main" data-act="upload"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Качи растение</button>
+      <button class="abtn" data-act="camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>Picture Now</button>
+      <button class="abtn" data-act="enhance"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Image Enhancer</button>
+      <input id="camfile" type="file" accept="image/*" capture="environment" hidden>
+    </div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-tab="lib" aria-selected="true">Библиотека</button>
+      <button class="tab" role="tab" data-tab="search" aria-selected="false">Търсене</button>
+      <button class="tab" role="tab" data-tab="sheet" aria-selected="false">Хербарен лист</button>
+      <button class="tab" role="tab" data-tab="health" aria-selected="false">Здраве на каталога<span class="temp">ВРЕМЕННО</span></button>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  <div class="notice"><span>ℹ︎</span><span><b>Как да четеш страницата.</b> Снимките са в частно хранилище и не могат да се покажат тук. На тяхно място има рисунки за трите примерни вида и цветни полета за останалите. Пълният стар текст е зареден за камбанката, еделвайса и върбовката.</span></div>
+  <div class="chips" role="group" aria-label="Вид" id="speciesChips"></div>
+  <main id="view"></main>
+  <div id="ovlhost"></div>
+  <div id="modalhost"></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <p class="foot">Източници за таксономията: POWO/Kew (Epilobium angustifolium е приетото име, Chamaenerion angustifolium е синоним), VASCAN по FNA 2021 (приема обратното), Euro+Med (Leontopodium nivale, местен за България). Защитният статус на еделвайса тук не е проверен по закона и стои като „за проверка“.</p>
+</div>
+
+<script>
+const S = [
+ { id:'epi', sci:'Epilobium angustifolium', author:'L.', bg:null, bgSuggest:'Теснолистна върбовка',
+   family:'Onagraceae', familyBg:'Върбовкови', gbif:'none', source:'AI · прието име', review:'сменено при прегледа',
+   synonyms:['Chamaenerion angustifolium (L.) Scop.','Chamerion angustifolium (L.) Holub'],
+   common:['fireweed','иван чай'],
+   conflict:'POWO и WFO приемат Epilobium angustifolium. VASCAN, по FNA 2021, приема Chamaenerion angustifolium. Изборът е редакторски.',
+   protected:false, desc:false, art:'epi',
+   ai:{conf:'medium', recognition:'Високи тревисти растения с изправени стъбла, върхови гроздовидни съцветия от розово-лилави цветове и тесни ланцетовидни листа.',
+     lookalikes:'Видове от род Epilobium (върбовка) и Lythrum salicaria (върболист блатняк).',
+     risks:'Идентификацията по снимка е само с информативна цел и не е окончателна. Не употребявайте растението с лечебни или хранителни цели.',
+     fun_fact:'Снимки в близък план на отделен цвят, плодните кутийки, чашелистчетата и детайли на стъблото.',
+     warn:{fun_fact:'Това поле съдържа съвет какво да снимаш, а не любопитен факт. Старият AI го е записал на грешното място.'}},
+   obs:[ {date:'2025-07-09', stage:'цъфтеж', place:'—', photos:['съцветие']},
+         {date:'2026-08-01', stage:'цъфтеж и плодове', place:'—', photos:['цяло растение','съцветие']} ] },
+ { id:'leo', sci:'Leontopodium nivale subsp. alpinum', author:'(Cass.) Greuter', bg:'Алпийски еделвайс', bgSuggest:null,
+   family:'Asteraceae', familyBg:'Сложноцветни', gbif:'accepted', source:'стар AI текст', review:'съвпада',
+   synonyms:['Leontopodium alpinum Cass.'], common:['edelweiss','еделвайс','сухоцвет'],
+   conflict:null, protected:true, desc:false, art:'leo',
+   ai:{conf:'medium', recognition:'Звездовидна форма на съцветието с гъсти вълнесто-влакнести сребристобели прицветни листа, обграждащи малки жълтеникави цветни кошнички.',
+     habitat:'Труднодостъпни варовити скали и пукнатини в Пирин и Северен Джендем (Стара планина).',
+     lookalikes:'Gnaphalium norvegicum (Горско смиличе)',
+     benefits:'Символ на българския планински туризъм и опазването на алпийската природа.',
+     risks:'Строго защитен вид в България съгласно Закона за биологичното разнообразие.',
+     uses:'Фармацевтични екстракти в козметиката заради мощните антиоксидантни свойства (леонтоподова киселина).',
+     fun_fact:'Белият мъх по листата съдържа микроструктури, които поглъщат вредната UV радиация на голяма надморска височина. Няма, класически алпийски образец.',
+     warn:{fun_fact:'Последното изречение е остатък от друго поле.', risks:'Твърдението за защитен статус идва от AI. Трябва да се провери в закона, преди да се показва като факт.'}},
+   obs:[ {date:'2025-07-16', stage:'цъфтеж', place:'скрито', photos:['цвят','лист']} ] },
+ { id:'cam', sci:'Campanula cochleariifolia', author:'Lam.', bg:'Лъжицолистна камбанка', bgSuggest:null,
+   family:'Campanulaceae', familyBg:'Камбанкови', gbif:'accepted', source:'стар AI текст', review:'съвпада',
+   synonyms:[], common:['fairy thimbles','камбанка'],
+   conflict:null, protected:false, desc:false, art:'cam',
+   ai:{conf:'Потвърдено (AI 85%)', recognition:'Малко многогодишно туфесто растение, растящо в скални пукнатини. Базалните листа са малки, заоблени до яйцевидни с дръжки. Цветовете са тъмносиньо-виолетови, с форма на увиснали тръбести камбанки, разположени на тънки изправени дръжки.',
+     habitat:'Високопланински варовикови скали, скални пукнатини, сипеи и каменисти ливади в супалпийския и алпийския пояс.',
+     lookalikes:'Campanula alpina (Алпийска камбанка), Campanula rotundifolia (Закръгленовидна камбанка), Campanula orbelica (Орбелска камбанка).',
+     benefits:'Изключително декоративно скално растение; източник на нектар и прашец за високопланински опрашители.',
+     risks:'Няма проверени данни за токсичност. Не консумирайте и не използвайте за лечение без потвърждение от специалист.',
+     uses:'Отглежда се като алпинеумно растение в специализирани градини; има ботаническа и консервационна стойност.',
+     fun_fact:'Този вид е способен да коренува в микроскопични пукнатини на твърди варовикови скали, където задържа съвсем малко количество почва и влага.',
+     warn:{conf:'Старият AI е писал „Потвърдено“. Във Флора 3 това е само предложение, докато не го потвърдиш ти или iNaturalist.'}},
+   obs:[ {date:'2026-09-05', stage:'цъфтеж', place:'—', photos:['цвят','цяло растение','цвят']} ] }
+];
+const ORGANS=['цвят','съцветие','лист','стъбло','цяло растение','плод'];
+const ORGAN_SHOWN=['цвят','лист','стъбло','цяло растение','плод'];
+
+/* ---------- all 98 records (read-only snapshot, 06.10.2026) ----------
+   [scientific_name, name_bg, family, gbif_match, name_source, has_description, photos, photos_with_date, months, review_decision] */
+const RAW=[
+["Acer tataricum","Татарски клен (Мекиш)","Sapindaceae","accepted","legacy_ai",1,1,0,"","match"],
+["Achillea sp.","Равнец","Asteraceae","none","legacy_ai",0,1,0,"","kept"],
+["Agaricales (неопределена гъба)","Пластинеста гъба","Fungi","none","legacy_ai",0,1,1,"10",null],
+["Ajuga reptans","Пълзящо срещниче","Lamiaceae (Устноцветни)","accepted","legacy_ai",1,2,0,"","match"],
+["Alliaria petiolata","Лечебна чесновка","Brassicaceae (Кръстоцветни)","accepted","legacy_ai",1,2,0,"","match"],
+["Androsace villosa","Космат прелом","Primulaceae","accepted","legacy_ai",0,1,1,"09","match"],
+["Angelica sylvestris","Горска пищялка","Apiaceae (Сенникови)","accepted","legacy_ai",1,1,0,"","match"],
+["Angelica sylvestris L. (cf. Angelica archangelica L.)","Горска пищялка (Дива ангелика)","Apiaceae","none","legacy_ai",0,1,1,"08","match"],
+["Armeria alpina","Високопланинско лъжниче","Plumbaginaceae","accepted","ai",0,1,1,"09","changed"],
+["Astragalus monspessulanus","Френски клин","Fabaceae (Бобови)","accepted","legacy_ai",0,1,0,"","match"],
+["Bougainvillea glabra","Bougainvillea glabra","Nyctaginaceae","accepted","ai",0,1,1,"07","changed"],
+["Buddleja japonica","Buddleja japonica","Scrophulariaceae","accepted","ai",0,1,1,"09","changed"],
+["Campanula cochleariifolia","Лъжицолистна камбанка","Campanulaceae (Камбанкови)","accepted","legacy_ai",0,3,3,"09","match"],
+["Cardamine bulbifera","Луковична зъбница","Brassicaceae (Кръстоцветни)","accepted","legacy_ai",0,1,0,"","match"],
+["Chamaecytisus eriocarpus","Абсинтиева зановеч","Fabaceae (Бобови)","accepted","manual",0,1,1,"09","kept"],
+["Cichorium intybus","Синя жлъчка (Цикория)","Asteraceae (Сложноцветни)","accepted","legacy_ai",0,1,1,"08","kept"],
+["Cirsium eriophorum","Вълнест бод","Asteraceae (Сложноцветни)","synonym","legacy_ai",0,1,1,"08","kept"],
+["Cirsium sp.","Бодил","Asteraceae (Сложноцветни)","none","legacy_ai",0,1,1,"07","kept"],
+["Cistus sp.","Памуклийка (Скална роза)","Cistaceae (Памуклиеви)",null,"legacy_ai",0,0,0,"",null],
+["Commelina communis","Обикновена комелина","Commelinaceae","accepted","legacy_ai",0,2,1,"08","match"],
+["Cotinus coggygria","Смрадлика","Anacardiaceae (Смрадликови)","accepted","legacy_ai",0,1,0,"","match"],
+["Crocus sp.","Пролетен минзухар","Iridaceae (Перуникови)","none","legacy_ai",0,3,2,"03","kept"],
+["Dianthus microlepis","Джуджевиден карамфил","Caryophyllaceae (Карамфилови)","accepted","legacy_ai",0,2,2,"09","kept"],
+["Digitalis ferruginea","Лопен","Plantaginaceae","accepted","ai",0,1,1,"07","changed"],
+["Digitalis lanata","Вълнест напръстник","Plantaginaceae (Живовлекови)","accepted","legacy_ai",0,1,0,"","match"],
+["Echium vulgare","Обикновена синя усойница","Boraginaceae (Грапаволистни)","accepted","legacy_ai",0,1,1,"08","match"],
+["Epilobium angustifolium","Epilobium angustifolium","Onagraceae","none","ai",0,3,3,"07,08","changed"],
+["Erica spiculifolia","Спайкова брукенталия (Пирен)","Ericaceae","accepted","legacy_ai",0,1,1,"08","match"],
+["Eupatorium cannabinum","Конопена водна конопка","Asteraceae (Сложноцветни)","accepted","legacy_ai",0,1,1,"07","kept"],
+["Galega officinalis","Фий","Fabaceae","accepted","ai",0,1,1,"07","changed"],
+["Galium aristatum","Galium aristatum","Rubiaceae","accepted","ai",0,1,0,"","changed"],
+["Geum coccineum","Червено омайниче","Rosaceae (Розоцветни)","accepted","legacy_ai",0,2,1,"09","match"],
+["Gypsophila repens","Пълзяща мишелка","Caryophyllaceae (Карамфилови)","accepted","legacy_ai",0,1,1,"09","kept"],
+["Helianthus annuus","Слънчоглед","Asteraceae","accepted","legacy_ai",1,1,0,"","match"],
+["Helleborus odorus","Миризлива чемерика","Ranunculaceae (Лютикови)","accepted","legacy_ai",0,1,1,"03","match"],
+["Hemerocallis fulva","Оранжева лилейка","Asphodelaceae (Асфоделови)","accepted","legacy_ai",1,1,1,"06","match"],
+["Hieracium sp. (cf. Crepis sp.)","Алпийско ястребиче (Скребър)","Asteraceae","none","legacy_ai",0,1,0,"","kept"],
+["Juniperus communis","Juniperus communis","Cupressaceae","accepted","ai",0,1,0,"","changed"],
+["Lamium maculatum","Петниста мъртва коприва","Lamiaceae (Устноцветни)","accepted","legacy_ai",0,1,0,"","match"],
+["Lathraea squamaria","Обикновена люспеница (Петров кръст)","Orobanchaceae","accepted","legacy_ai",0,1,0,"","match"],
+["Lathyrus nissolia","Секирче","Fabaceae","accepted","ai",0,1,0,"","changed"],
+["Leontopodium nivale subsp. alpinum","Алпийски еделвайс","Asteraceae (Сложноцветни)","accepted","legacy_ai",0,2,2,"07","match"],
+["Linaria angustissima","Обикновена луличка","Plantaginaceae","accepted","ai",0,1,1,"08","changed"],
+["Lonicera periclymenum","Орлови нокти","Caprifoliaceae","accepted","ai",0,1,1,"07","changed"],
+["Malus domestica","Ябълка","Rosaceae","accepted","legacy_ai",0,1,0,"","kept"],
+["Mentha longifolia","Дълголистна мента (Дива мента)","Lamiaceae (Устноцветни)","accepted","legacy_ai",0,2,1,"08","match"],
+["Mirabilis jalapa","Нощна красавица","Nyctaginaceae (Никтагинови)","accepted","legacy_ai",0,3,2,"09","match"],
+["Muscari sp.","Кукувиче грозде","Asparagaceae","none","legacy_ai",0,1,0,"","kept"],
+["Myosotis alpestris","Алпийска незабравка","Boraginaceae (Грапаволистни)","accepted","legacy_ai",0,1,1,"09","match"],
+["Myosotis sp.","Незабравка","Boraginaceae (Грапаволистни)","none","legacy_ai",0,1,0,"","kept"],
+["Neotinea ustulata","Прегоряла орхидея (Дива орхидея)","Orchidaceae (Орхидеи)","accepted","legacy_ai",0,1,1,"05","kept"],
+["Nerium oleander","Олеандър (Зокум)","Apocynaceae (Олеандрови)","accepted","legacy_ai",0,1,0,"","match"],
+["Nerium oleander L.","Обикновен олеандър (Зокум)","Apocynaceae (Зокумови)","accepted","legacy_ai",0,1,1,"07","match"],
+["Oxalis acetosella","Обикновена зайча киселица","Oxalidaceae (Киселицови)","accepted","legacy_ai",0,1,0,"","match"],
+["Oxalis acetosella L.","Заешки киселец","Oxalidaceae","accepted","legacy_ai",0,1,1,"08","match"],
+["Papaver rhoeas","Червен мак","Papaveraceae","accepted","legacy_ai",0,1,0,"","kept"],
+["Passiflora caerulea","Синя пасифлора","Passifloraceae","accepted","legacy_ai",1,1,0,"","match"],
+["Petrorhagia saxifraga","Скалоломна петрорагия","Caryophyllaceae (Карамфилови)","accepted","legacy_ai",0,1,1,"09","kept"],
+["Phillyrea latifolia","Филирея","Oleaceae","accepted","ai",1,1,1,"07","changed"],
+["Polystichum lonchitis","Копиевидна бодлива папрат","Dryopteridaceae (Щитовидни)","accepted","legacy_ai",0,1,0,"","match"],
+["Primula veris","Лечебна иглика","Primulaceae","accepted","legacy_ai",0,1,0,"","match"],
+["Prunus domestica","Слива","Rosaceae","accepted","ai",0,1,1,"07","changed"],
+["Pulmonaria officinalis","Лечебна медуница","Boraginaceae (Грапаволистни)","accepted","legacy_ai",1,1,0,"","match"],
+["Pulmonaria rubra","Червена медуница","Boraginaceae","accepted","legacy_ai",0,1,0,"","match"],
+["Pulmonaria sp.","Медуница","Boraginaceae (Грапаволистни)","none","legacy_ai",0,1,1,"05","kept"],
+["Pyracantha crenulata","Огнен трън","Rosaceae","accepted","ai",0,1,1,"08","changed"],
+["Quercus sp.","Дъб (вид)","Fagaceae (Букови)","none","legacy_ai",0,1,1,"07","kept"],
+["Ranunculus sp.","Лютиче","Ranunculaceae (Лютикови)","none","legacy_ai",0,1,1,"05","kept"],
+["Rhinanthus sp.","Клопотар","Orobanchaceae","none","legacy_ai",0,1,0,"","kept"],
+["Rosa canina","Обикновена шипка","Rosaceae","accepted","legacy_ai",0,1,0,"","kept"],
+["Rudbeckia laciniata 'Hortensia'","Разрязанолистна рудбекия (сорт 'Златна топка')","Asteraceae (Сложноцветни)","none","legacy_ai",0,1,1,"08","match"],
+["Ruscus aculeatus","Бодлив залист","Asparagaceae","accepted","ai",1,1,1,"07","changed"],
+["Ruscus aculeatus","Бодлив чал (Миши бод)","Asparagaceae","accepted","legacy_ai",0,1,0,"","match"],
+["Russula sp.","Червена гълъбка","Fungi","none","legacy_ai",0,1,1,"06",null],
+["Salix silesiaca Willd. (cf. Salix caprea L.)","Силезийска върба (Планинска върба)","Salicaceae","none","legacy_ai",0,1,0,"","kept"],
+["Sambucus racemosa","Червен бъз","Viburnaceae","accepted","ai",1,2,2,"08","changed"],
+["Sanguisorba minor","Малка динена трева","Rosaceae","synonym","legacy_ai",0,1,0,"","match"],
+["Scilla bifolia","Двулистен синчец","Asparagaceae (Зайчесянкови)","accepted","legacy_ai",0,1,0,"","match"],
+["Sempervivum sp.","Тлъстига (Дебелец)","Crassulaceae (Дебелотекови)","none","legacy_ai",0,1,1,"08","kept"],
+["Senecio ovatus","Горски спореж","Asteraceae","accepted","ai",0,1,1,"08","changed"],
+["Silene acaulis","Извитолистна минуарция","Caryophyllaceae","accepted","ai",0,1,1,"09","changed"],
+["Silene ciliata","Безстъблено плюскавиче","Caryophyllaceae","accepted","ai",0,2,2,"09","changed"],
+["Silene vulgaris","Обикновено плюскавиче","Caryophyllaceae (Карамфилови)","accepted","legacy_ai",0,2,0,"","match"],
+["Silene vulgaris","Обикновено плюскавиче","Caryophyllaceae","accepted","ai",1,1,0,"","changed"],
+["Silene vulgaris (Moench) Garcke","Надуто плюскавиче","Caryophyllaceae","accepted","legacy_ai",0,1,0,"","kept"],
+["Sinningia speciosa","все още не знам","Gesneriaceae","accepted","ai",0,1,1,"10",null],
+["Symphyotrichum ericoides","Върболистен астер","Asteraceae","accepted","ai",0,1,1,"08","changed"],
+["Tanacetum vulgare","Обикновена вратига","Asteraceae (Сложноцветни)","accepted","legacy_ai",0,1,1,"08","match"],
+["Telekia speciosa","Бял оман","Asteraceae","accepted","ai",0,1,1,"08","changed"],
+["Thymus serpyllum","Дива мащерка","Lamiaceae (Устноцветни)","accepted","legacy_ai",0,2,2,"09","kept"],
+["Tulipa sp.","Неопределено луковично растение (вероятно Лале)","Liliaceae","none","legacy_ai",0,1,0,"","kept"],
+["Vaccinium myrtillus L.","Черна боровинка","Ericaceae","accepted","legacy_ai",1,1,0,"","match"],
+["Vaccinium vitis-idaea L.","Червена боровинка","Ericaceae","accepted","legacy_ai",1,1,0,"","match"],
+["Verbascum sp.","Лопен","Scrophulariaceae (Живеничеви)","none","legacy_ai",0,3,0,"","kept"],
+["Verbascum thapsus","Обикновен лопен","Scrophulariaceae (Живеничеви)","accepted","legacy_ai",0,1,1,"08","match"],
+["Viburnum sp.","Калина","Adoxaceae / Viburnaceae (Мешковицови)","none","legacy_ai",0,1,1,"07","kept"],
+["Vinca minor","Малък зимзелен","Точеникови (Apocynaceae)","accepted","legacy_ai",0,1,1,"05","match"],
+["Viola tricolor","Трицветна теменуга","Violaceae","accepted","legacy_ai",0,1,1,"08","match"]
+];
+/* Bulgarian names that look swapped or borrowed from another genus — flagged for checking, not corrected */
+const BG_SUSPECT={
+ 'Digitalis ferruginea':'„Лопен“ е име на род Verbascum. За Digitalis ferruginea се очаква име с „напръстник“.',
+ 'Silene acaulis':'„Минуарция“ е друг род (Minuartia). „Безстъблено плюскавиче“ обикновено се отнася за Silene acaulis.',
+ 'Silene ciliata':'„Безстъблено плюскавиче“ обикновено е Silene acaulis. Възможна е размяна с горния запис.',
+ 'Galega officinalis':'„Фий“ обикновено се отнася за род Vicia.'
+};
+const canon=s=>s.replace(/\(.*?\)/g,'').replace(/'.*?'/g,'').replace(/\s+(L\.|Willd\.|Garcke|Mill\.)\s*/g,' ').trim().split(/\s+/).slice(0,2).join(' ').toLowerCase();
+const famLatin=f=>{const m=f.match(/[A-Z][a-z]+aceae/g);return f==='Fungi'?'Fungi':(m?m[m.length-1]:f)};
+const famBg=f=>{const m=f.match(/\(([А-Яа-я ]+)\)/)||f.match(/^([А-Я][а-я]+)\s/);return m?m[1]:''};
+const ALL=RAW.map((r,i)=>({i,sci:r[0],bg:r[1],fam:r[2],gbif:r[3],ns:r[4],desc:!!r[5],n:r[6],nt:r[7],months:r[8]?r[8].split(','):[],dec:r[9]}));
+const canonCount={}; ALL.forEach(p=>{const c=canon(p.sci);canonCount[c]=(canonCount[c]||0)+1});
+const ISSUES={
+ nobg:{l:'Няма българско име',sev:'bad',t:p=>p.bg===p.sci||/не знам|Неопределено/.test(p.bg)},
+ bgsus:{l:'Българското име за проверка',sev:'bad',t:p=>!!BG_SUSPECT[p.sci]},
+ dup:{l:'Дубликат на вид',sev:'bad',t:p=>canonCount[canon(p.sci)]>1},
+ nophoto:{l:'Без снимка',sev:'bad',t:p=>p.n===0},
+ gbif:{l:'Не е прието име в GBIF',sev:'warn',t:p=>p.gbif!=='accepted'},
+ genus:{l:'Определено само до род',sev:'warn',t:p=>/ sp\.|cf\.|Agaricales/.test(p.sci)},
+ author:{l:'Автор в името',sev:'warn',t:p=>/ L\.|Willd\.|Garcke/.test(p.sci)},
+ fam:{l:'Семейството е в различен формат',sev:'warn',t:p=>!/^[A-Z][a-z]+aceae \([А-Я][а-я]+\)$/.test(p.fam)},
+ nodate:{l:'Снимка без дата',sev:'warn',t:p=>p.nt<p.n},
+ nodesc:{l:'Без описание',sev:'warn',t:p=>!p.desc},
+ noreview:{l:'Непрегледан',sev:'warn',t:p=>!p.dec},
+ fungi:{l:'Гъба',sev:'warn',t:p=>p.fam==='Fungi'},
+ draft:{l:'Нова чернова',sev:'warn',t:p=>!!p.isNew}
+};
+ALL.forEach(p=>{p.iss=Object.keys(ISSUES).filter(k=>ISSUES[k].t(p))});
+const detailFor=p=>S.find(s=>s.sci===p.sci);
+
+/* ---------- illustrations (drawn, not photos) ---------- */
+function art(kind){
+  if(kind==='epi') return `<svg viewBox="0 0 120 160" aria-hidden="true">
+    <path d="M60 158 C60 120 61 80 60 20" stroke="var(--stem)" stroke-width="2.4" fill="none"/>
+    ${[130,115,100,86].map((y,i)=>`<path d="M60 ${y} q${i%2?18:-18} -6 ${i%2?34:-34} -2" stroke="var(--stem)" stroke-width="2" fill="none"/>`).join('')}
+    ${Array.from({length:9},(_,i)=>{const y=74-i*6, x=60+(i%2?9:-9)*(1-i/12);return `<g transform="translate(${x} ${y})">${[0,90,180,270].map(a=>`<ellipse rx="2.6" ry="5" transform="rotate(${a+45}) translate(0 -4)" fill="var(--petal-pink)"/>`).join('')}</g>`}).join('')}
+    <path d="M60 22 l-2 -8 l4 0 z" fill="var(--petal-pink)" opacity=".6"/></svg>`;
+  if(kind==='leo') return `<svg viewBox="0 0 120 160" aria-hidden="true">
+    <path d="M60 158 C59 130 61 100 60 70" stroke="var(--stem)" stroke-width="2.4" fill="none"/>
+    <path d="M60 135 q-16 -4 -24 -14" stroke="var(--wool-edge)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M60 118 q16 -4 24 -14" stroke="var(--wool-edge)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <g transform="translate(60 58)">${Array.from({length:9},(_,i)=>`<path d="M0 0 L-5 -30 Q0 -36 5 -30 Z" transform="rotate(${i*40})" fill="var(--wool)" stroke="var(--wool-edge)" stroke-width="1"/>`).join('')}
+    ${[[0,0],[-7,-4],[7,-4],[-5,6],[5,6]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.2" fill="#C9B65A" stroke="var(--wool-edge)" stroke-width=".8"/>`).join('')}</g></svg>`;
+  return `<svg viewBox="0 0 120 160" aria-hidden="true">
+    <path d="M40 158 C42 120 50 90 70 60" stroke="var(--stem)" stroke-width="2" fill="none"/>
+    <path d="M74 158 C72 130 76 110 90 92" stroke="var(--stem)" stroke-width="2" fill="none"/>
+    ${[[34,150],[46,152],[66,154],[80,150]].map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="7" ry="4.5" fill="var(--stem)" opacity=".8"/>`).join('')}
+    ${[[70,60,-20],[56,82,15],[90,92,-10]].map(([x,y,r])=>`<g transform="translate(${x} ${y}) rotate(${r})"><path d="M0 0 C-10 4 -12 18 -10 26 L-7 22 L-3 27 L0 22 L3 27 L7 22 L10 26 C12 18 10 4 0 0 Z" fill="var(--petal-blue)"/></g>`).join('')}
+  </svg>`;
+}
+const plate=(k,cap)=>`<div class="plate">${art(k)}${cap?`<span class="cap">${cap}</span>`:''}</div>`;
+
+/* ---------- state ---------- */
+let cur='epi', tab='lib';
+const roleState={}; // per species obs/photo role overrides
+const trash=[];
+
+const fmt=d=>{const [y,m,dd]=d.split('-');return `${dd}.${m}.${y}`};
+const sp=()=>S.find(s=>s.id===cur);
+function rolesOf(s){ return s.obs.flatMap((o,oi)=>o.photos.map((r,pi)=>roleState[`${s.id}-${oi}-${pi}`]||r)); }
+
+function statusTag(s){
+  if(s.gbif==='none') return `<span class="tag t-ai">AI · име не е намерено в GBIF</span>`;
+  return `<span class="tag t-ai">AI · прието име в GBIF</span>`;
+}
+
+/* ---------- panels ---------- */
+function vSheet(){
+  const s=sp(); const o=s.obs[s.obs.length-1]; const n=String(S.indexOf(s)+1).padStart(4,'0');
+  return `<section class="panel">
+  <p class="lede">Класически хербарен лист: растението в средата, етикет долу вдясно, щемпел и каталожен номер. Тук е изглед на страницата. В приложението ще е PDF за печат.</p>
+  <div class="sheetwrap"><div class="hsheet">
+    <span class="barcode">F3-${n}</span>
+    <div class="stampmark">HERBARIUM<br>FLORA 3<br>${o.date.slice(0,4)}</div>
+    <div class="specimen">${art(s.art)}</div>
+    <div class="qr">QR към записа</div>
+    <div class="label">
+      <div class="lh"><span>Flora 3 · Bulgaria</span><span>№ ${n}</span></div>
+      <div class="ln">${s.sci} <span style="font-style:normal;font-size:.8rem">${s.author}</span></div>
+      <div style="margin-bottom:6px">${s.bg||s.bgSuggest+' (предл.)'} · ${s.family}</div>
+      <div class="row2">
+        <span>Дата</span><span>${fmt(o.date)}</span>
+        <span>Място</span><span>${s.protected?'скрито · защитен вид':'не е въведено'}</span>
+        <span>Стадий</span><span>${o.stage} (пример)</span>
+        <span>leg.</span><span>Б. Илиев</span>
+        <span>det.</span><span>не е определено от редактор</span>
+      </div>
+    </div>
+  </div></div></section>`;
+}
+
+/* search */
+const TR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sht',ъ:'a',ь:'y',ю:'yu',я:'ya'};
+function norm(t){ return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').split('').map(c=>TR[c]??c).join('')
+  .replace(/w/g,'v').replace(/y/g,'i').replace(/ph/g,'f').replace(/th/g,'t').replace(/(.)\1+/g,'$1'); }
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length];}
+function fields(p){const d=detailFor(p);const f=[['научно име',p.sci],['българско име',p.bg],['семейство',p.fam]];
+  if(d){if(d.bgSuggest)f.push(['предложено име',d.bgSuggest]);d.synonyms.forEach(x=>f.push(['синоним',x]));d.common.forEach(x=>f.push(['народно/английско име',x]));}
+  return f.filter(x=>x[1]);}
+function search(q){
+  const nq=norm(q.trim()); if(nq.length<2) return [];
+  const out=[];
+  for(const p of ALL){ let best=null;
+    for(const [lbl,val] of fields(p)){
+      for(const w of val.split(/[\s()/,']+/).filter(Boolean)){
+        const nw=norm(w); let score=null;
+        if(nw.startsWith(nq)||nw.includes(nq)) score=0;
+        else if(nq.length>=4){ const dist=lev(nq,nw.slice(0,Math.max(nq.length,nw.length))); const tol=Math.max(1,Math.floor(nq.length/4)); if(dist<=tol) score=dist; }
+        if(score!==null&&(!best||score<best.score)) best={score,lbl,val,w};
+      }}
+    if(best) out.push({p,...best});
+  }
+  return out.sort((a,b)=>a.score-b.score).slice(0,30);
+}
+function vSearch(){
+  return `<section class="panel">
+  <p class="lede">Търси във всичките 98 записа, на кирилица или латиница, с правописни грешки. Опитай: <b>kambanka</b>, <b>edelvais</b>, <b>chamerion</b>, <b>иван чай</b>, <b>plyuskaviche</b>, <b>rosaceae</b>.</p>
+  <div class="search"><input id="q" type="search" placeholder="Име, синоним, семейство…" value="edelvais" aria-label="Търсене"></div>
+  <ul class="results" id="res"></ul></section>`;
+}
+function renderResults(){
+  const q=document.getElementById('q').value; const r=search(q); const el=document.getElementById('res');
+  el.innerHTML=r.length?r.map(x=>`<li><button class="res" data-open="${x.p.i}" style="width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer"><div class="mini">${thumbOf(x.p)}</div><div style="min-width:0">
+    <div class="sci">${x.p.sci}</div><div style="font-size:.88rem">${x.p.bg}</div>
+    <div class="why">Съвпадение в ${x.lbl}: <mark>${x.w}</mark>${x.score?` · ${x.score} буква разлика`:''}</div></div></button></li>`).join('')
+    : `<li class="res" style="color:var(--muted)">Няма съвпадения.</li>`;
+}
+
+/* library */
+let libQ='', libSort='sci', libMonth='';
+function thumbOf(p){const d=detailFor(p);return d?plate(d.art):`<div class="plate"><span style="font:600 1.3rem var(--f-display);color:var(--line)">${p.sci[0]}</span></div>`;}
+function hueOf(f){let h=0;for(const c of famLatin(f))h=(h*31+c.charCodeAt(0))%997;return 110+h%55;}
+function libCard(p){const d=detailFor(p);const bad=p.iss.filter(k=>ISSUES[k].sev==='bad').length;
+  return `<button class="lcard" data-open="${p.i}">
+    <div class="ph${p.photos?' photo':''}" style="--h:${hueOf(p.fam)}">${p.photos?`<img src="${photoSrc(p.photos[0])}" alt="">${p.photos[0].use==='enh'&&p.photos[0].enh?'<span class="enhb">подобрена</span>':''}`:d?art(d.art):`<span class="ini">${p.sci[0]}</span>`}
+      <span class="n">${p.n} ${p.n===1?'снимка':'снимки'}</span>${p.isNew?'<span class="iss tag t-ai">чернова</span>':''}
+      ${bad?`<span class="iss tag t-bad">${bad} за поправка</span>`:''}</div>
+    <div class="tx"><span class="bn">${p.bg}</span><span class="sn">${p.sci}</span></div></button>`;}
+function vLib(){
+  const M=['','януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+  return `<section class="panel">
+  <div class="viewbar">
+    <div class="seg big" role="group" aria-label="Изглед">
+      <button data-view="plants" aria-pressed="${libView==='plants'}">Растения</button>
+      <button data-view="fams" aria-pressed="${libView==='fams'}">Семейства</button>
+    </div>
+  </div>
+  <div class="libbar" id="plantctl">
+    <input id="libq" type="search" placeholder="Търси по име или семейство" value="${esc(libQ)}" aria-label="Филтър">
+    <select id="libsort" aria-label="Подредба">
+      <option value="sci"${libSort==='sci'?' selected':''}>А–Z научно име</option>
+      <option value="bg"${libSort==='bg'?' selected':''}>А–Я българско име</option>
+      <option value="fam"${libSort==='fam'?' selected':''}>По семейство</option>
+    </select>
+    <select id="libmonth" aria-label="Месец на снимката">
+      <option value="">Всички месеци</option>
+      ${['03','05','06','07','08','09','10'].map(m=>`<option value="${m}"${libMonth===m?' selected':''}>Снимани през ${M[+m]}</option>`).join('')}
+    </select>
+    <select id="libsize" aria-label="Растения на страница">
+      ${[15,30,45].map(n=>`<option value="${n}"${libSize===n?' selected':''}>${n} на страница</option>`).join('')}
+    </select>
+  </div>
+  <div id="libbody"></div></section>`;
+}
+/* ---------- library: paginated plants + one-screen family index ---------- */
+let libPage=0, libSize=15, libView='plants', libFam='';
+function famGroups(){const g={};ALL.filter(p=>!p.isNew).forEach(p=>{const k=famLatin(p.fam);(g[k]=g[k]||[]).push(p)});return g;}
+function renderLib(){
+  const el=document.getElementById('libbody');
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===libView));
+  document.getElementById('plantctl').hidden=libView!=='plants';
+  if(libView==='fams'){
+    const g=famGroups(); const keys=Object.keys(g).sort((a,b)=>g[b].length-g[a].length||a.localeCompare(b));
+    const max=g[keys[0]].length;
+    el.innerHTML=`<p class="count" style="margin:0 0 12px">${keys.length} семейства · избери едно, за да видиш растенията му</p>
+      <div class="famgrid">${keys.map(k=>{const bgn=g[k].map(p=>famBg(p.fam)).find(Boolean)||'';
+        return `<button class="famtile" data-famsel="${k}" style="--h:${hueOf(k)}"><span class="ft"><i>${k}</i><b>${g[k].length}</b></span><span class="fb">${bgn||'&nbsp;'}</span><span class="bar"><span style="width:${Math.max(6,g[k].length/max*100)}%"></span></span></button>`}).join('')}</div>`;
+    return;
+  }
+  const nq=norm(libQ.trim());
+  const drafts=ALL.filter(p=>p.isNew);
+  let list=ALL.filter(p=>!p.isNew&&(!libFam||famLatin(p.fam)===libFam)&&(!nq||norm(p.sci+' '+p.bg+' '+p.fam).includes(nq))&&(!libMonth||p.months.includes(libMonth)));
+  list.sort((a,b)=>libSort==='bg'?a.bg.localeCompare(b.bg,'bg'):libSort==='fam'?famLatin(a.fam).localeCompare(famLatin(b.fam))||a.sci.localeCompare(b.sci):a.sci.localeCompare(b.sci));
+  let html='';
+  if(drafts.length&&!libFam&&!nq) html+=`<section class="drafts"><div class="famhead static"><h3>Нови чернови</h3><span class="bgf">качени сега, непотвърдени</span><span class="pill">${drafts.length}</span></div>
+    <div class="libgrid" style="margin-top:12px">${drafts.slice().reverse().map(libCard).join('')}</div></section>`;
+  const famChip=libFam?`<span class="fchip"><i>${libFam}</i>${(()=>{const b=(famGroups()[libFam]||[]).map(p=>famBg(p.fam)).find(Boolean);return b?' · '+b:''})()}<button data-famsel="" aria-label="Махни филтъра за семейство">✕</button></span>`:'';
+  const pages=Math.max(1,Math.ceil(list.length/libSize)); libPage=Math.min(libPage,pages-1);
+  const from=libPage*libSize, slice=list.slice(from,from+libSize);
+  html+=`<div class="libtools"><div class="row">${famChip}<p class="count">${list.length?`${from+1}–${from+slice.length} от ${list.length}`:'0'} ${libFam||nq||libMonth?'(филтрирани)':'записа'}</p></div></div>`;
+  if(!list.length){el.innerHTML=html+'<p style="color:var(--muted)">Няма записи по този филтър.</p>';return;}
+  html+=`<div class="libgrid">${slice.map(libCard).join('')}</div>`;
+  if(pages>1){
+    const nums=[];for(let i=0;i<pages;i++){if(i===0||i===pages-1||Math.abs(i-libPage)<=1)nums.push(i);else if(nums[nums.length-1]!=='…')nums.push('…');}
+    html+=`<nav class="pager" aria-label="Страници">
+      <button class="btn sm" data-pg="${libPage-1}" ${libPage===0?'disabled':''} aria-label="Предишна страница">‹ Назад</button>
+      ${nums.map(i=>i==='…'?'<span class="gap">…</span>':`<button class="btn sm${i===libPage?' cur':''}" data-pg="${i}" ${i===libPage?'aria-current="page"':''}>${i+1}</button>`).join('')}
+      <button class="btn sm" data-pg="${libPage+1}" ${libPage===pages-1?'disabled':''} aria-label="Следваща страница">Напред ›</button>
+      <span class="count">стр. ${libPage+1} от ${pages}</span></nav>`;
+  }
+  el.innerHTML=html;
+}
+
+/* ---------- shared helpers ---------- */
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const photoSrc=ph=>ph.use==='enh'&&ph.enh?ph.enh:ph.url;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3600);}
+function loadImg(url){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});}
+let modal=null; let modalReturn=null;
+function openModal(name,from){modal=name;modalReturn=from||document.activeElement;renderModal();}
+function closeModal(){modal=null;renderModal();if(modalReturn&&document.contains(modalReturn))modalReturn.focus();}
+
+/* ---------- upload + analysis (in this window only) ---------- */
+const OK_TYPES=['image/jpeg','image/png','image/webp','image/heic','image/heif'];
+const MAX_MB=25, MIN_SIDE=600;
+let up={mode:'one',items:[],phase:'pick',plants:[]};
+function resetUp(){up.items.forEach(i=>{});up={mode:'one',items:[],phase:'pick',plants:[]};}
+async function addFiles(files){
+  for(const f of files){
+    const it={id:Math.random().toString(36).slice(2),file:f,name:f.name,size:f.size,type:f.type||'неизвестен',url:URL.createObjectURL(f),w:0,h:0,ok:true,msg:'',date:new Date(f.lastModified)};
+    if(!OK_TYPES.includes(f.type)){it.ok=false;it.msg='Не е снимка (JPEG, PNG, WebP или HEIC).';}
+    else if(f.size>MAX_MB*1048576){it.ok=false;it.msg=`Над ${MAX_MB} MB.`;}
+    else { try{const im=await loadImg(it.url);it.w=im.naturalWidth;it.h=im.naturalHeight;
+        if(Math.min(it.w,it.h)<MIN_SIDE){it.ok=false;it.msg=`Малка снимка (${it.w}×${it.h}). За разпознаване трябва поне ${MIN_SIDE} px.`;}}
+      catch{ if(/heic|heif/.test(f.type)){it.msg='HEIC: браузърът не го показва. В приложението сървърът го превръща в JPEG.';} else {it.ok=false;it.msg='Файлът не се отваря като снимка.';} } }
+    up.items.push(it);
+  }
+  up.phase='review'; renderModal();
+}
+function groupPlants(){const ok=up.items.filter(i=>i.ok);return up.mode==='one'?[ok]:ok.map(i=>[i]);}
+async function analyze(){
+  const groups=groupPlants(); if(!groups.length||!groups[0].length) return;
+  up.plants=groups.map((g,i)=>({n:i+1,items:g,steps:[0,0,0,0],name:''})); up.phase='analyzing'; renderModal();
+  for(const pl of up.plants){ for(let s=0;s<4;s++){ pl.steps[s]=1; renderModal(); await new Promise(r=>setTimeout(r,s===2?650:380)); pl.steps[s]=2; } }
+  up.phase='result'; renderModal();
+}
+const STEPS=['Проверка на файла: тип, размер, измерения','Оригиналът се пази, правят се WebP копия','Pl@ntNet: кандидати с %','GBIF: проверка на името'];
+function stepIcon(v,i){return v===2?(i>=2?'<span class="si skip">–</span>':'<span class="si done">✓</span>'):v===1?'<span class="si run"></span>':'<span class="si"></span>';}
+function addDrafts(){
+  document.querySelectorAll('[data-pname]').forEach(inp=>{up.plants[+inp.dataset.pname].name=inp.value.trim();});
+  for(const pl of up.plants){
+    const months=[...new Set(pl.items.map(i=>String(i.date.getMonth()+1).padStart(2,'0')))];
+    const p={i:ALL.length,sci:'Неопределено',bg:pl.name||'Без име',fam:'—',gbif:null,ns:'manual',desc:false,n:pl.items.length,nt:0,months,dec:null,isNew:true,
+      photos:pl.items.map(i=>({id:i.id,url:i.url,name:i.name,w:i.w,h:i.h,enh:null,use:'orig'}))};
+    p.iss=['draft']; ALL.push(p);
+  }
+  const n=up.plants.length; resetUp(); closeModal(); tab='lib'; render();
+  toast(`${n===1?'Добавена е 1 чернова':`Добавени са ${n} чернови`} в библиотеката. Нищо не е записано в базата.`);
+}
+function vUpload(){
+  const head=(t,sub)=>`<div class="mh"><div><h2>${t}</h2>${sub?`<p class="msub">${sub}</p>`:''}</div><button class="x" data-close aria-label="Затвори">✕</button></div>`;
+  if(up.phase==='pick') return head('Качи растение','Една или няколко снимки от компютъра. След това минават през проверка и анализ.')+`
+    <div class="modes" role="radiogroup" aria-label="Как да се групират снимките">
+      <label class="mode"><input type="radio" name="upmode" value="one" ${up.mode==='one'?'checked':''}><span><b>Едно растение</b><small>Всички снимки са на едно и също растение: цвят, лист, стъбло.</small></span></label>
+      <label class="mode"><input type="radio" name="upmode" value="many" ${up.mode==='many'?'checked':''}><span><b>Няколко растения</b><small>Всяка снимка е отделно растение.</small></span></label>
+    </div>
+    <label class="drop" id="drop" for="upfile">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 32V12m0 0-8 8m8-8 8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 30v6a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4v-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <b>Избери снимки</b><span>или ги пусни тук · JPEG, PNG, WebP, HEIC · до ${MAX_MB} MB</span>
+      <input id="upfile" type="file" accept="image/*" multiple hidden>
+    </label>`;
+  if(up.phase==='review'){const okN=up.items.filter(i=>i.ok).length;const plants=up.mode==='one'?(okN?1:0):okN;
+    return head('Провери снимките',`${up.items.length} ${up.items.length===1?'файл':'файла'} · ${up.mode==='one'?'едно растение':'всяка снимка е отделно растение'}`)+`
+    <div class="pgrid">${up.items.map(i=>`<figure class="pthumb ${i.ok?'':'bad'}"><div class="pimg">${i.w?`<img src="${i.url}" alt="">`:'<span>без преглед</span>'}<button class="rm" data-rm="${i.id}" aria-label="Махни ${esc(i.name)}">✕</button></div>
+      <figcaption><span class="fn">${esc(i.name)}</span><span class="fm">${i.w?`${i.w}×${i.h} · `:''}${(i.size/1048576).toFixed(1)} MB</span>${i.msg?`<span class="${i.ok?'fw':'fe'}">${i.msg}</span>`:'<span class="fo">✓ готова</span>'}</figcaption></figure>`).join('')}
+      <label class="pthumb add" for="upfile2"><span>＋ Още снимки</span><input id="upfile2" type="file" accept="image/*" multiple hidden></label></div>
+    <div class="mfoot"><button class="btn" data-back>Назад</button><button class="btn primary" data-analyze ${plants?'':'disabled'}>Анализирай · ${plants} ${plants===1?'растение':'растения'}</button></div>`;}
+  if(up.phase==='analyzing'||up.phase==='result') return head(up.phase==='result'?'Резултат от анализа':'Анализ…',up.phase==='result'?'Нищо не е записано. Ти решаваш кое да влезе в библиотеката.':'Една заявка на растение. Без двойни заявки към квотата.')+`
+    <div class="plist">${up.plants.map((pl,k)=>`<article class="pl">
+      <div class="plph">${pl.items.slice(0,4).map(i=>i.w?`<img src="${i.url}" alt="">`:'<span></span>').join('')}${pl.items.length>4?`<span class="more">+${pl.items.length-4}</span>`:''}</div>
+      <div class="plbody"><div class="row" style="justify-content:space-between"><b>Растение ${pl.n}</b><span class="count">${pl.items.length} ${pl.items.length===1?'снимка':'снимки'}</span></div>
+        <ul class="steps">${STEPS.map((s,i)=>`<li>${stepIcon(pl.steps[i],i)}<span>${s}</span></li>`).join('')}</ul>
+        ${up.phase==='result'?`<div class="cands"><b>Кандидати</b><p>В приложението тук идват 3–5 възможни вида от Pl@ntNet с процент и проверка в GBIF. Ти избираш един или оставяш растението като чернова. Прототипът не вика външни услуги, затова тук няма кандидати.</p>
+          <div class="sk"></div><div class="sk"></div><div class="sk short"></div></div>
+          <label class="nm" for="pn-${k}">Българско име, ако го знаеш<input id="pn-${k}" data-pname="${k}" type="text" placeholder="например Лъжицолистна камбанка" value="${esc(pl.name)}"></label>`:''}
+      </div></article>`).join('')}</div>
+    ${up.phase==='result'?`<div class="mfoot"><button class="btn" data-close>Откажи</button><button class="btn primary" data-adddrafts>Добави като ${up.plants.length===1?'чернова':`${up.plants.length} чернови`}</button></div>`:''}`;
+}
+
+/* ---------- Image Enhancer: levels + light sharpening, colour untouched ---------- */
+let enh={sel:new Set(),busy:false,extra:[]};
+function allPhotos(){return [...ALL.filter(p=>p.isNew).flatMap(p=>p.photos.map(ph=>({ph,plant:p.bg}))),...enh.extra.map(ph=>({ph,plant:'Избрана от компютъра'}))];}
+async function enhanceUrl(url){
+  const img=await loadImg(url); const sc=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.round(img.naturalWidth*sc),h=Math.round(img.naturalHeight*sc);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h),a=d.data,N=w*h;
+  // one luminance histogram -> the same levels curve for R, G and B, so hue never shifts
+  const hist=new Uint32Array(256); for(let i=0;i<a.length;i+=4) hist[(a[i]*77+a[i+1]*150+a[i+2]*29)>>8]++;
+  let lo=0,hi=255,acc=0; for(;lo<255;lo++){acc+=hist[lo];if(acc>N*.004)break;} acc=0; for(;hi>0;hi--){acc+=hist[hi];if(acc>N*.004)break;}
+  if(hi-lo<40){lo=Math.max(0,lo-20);hi=Math.min(255,hi+20);}
+  const lut=new Uint8ClampedArray(256); for(let v=0;v<256;v++){const t=Math.min(1,Math.max(0,(v-lo)/(hi-lo)));lut[v]=Math.round(255*(t*.75+(v/255)*.25));}
+  for(let i=0;i<a.length;i+=4){a[i]=lut[a[i]];a[i+1]=lut[a[i+1]];a[i+2]=lut[a[i+2]];}
+  // unsharp mask, radius 1, amount .45
+  const src=new Uint8ClampedArray(a),tmp=new Float32Array(a.length),amt=.45;
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){const o=(y*w+X)*4,l=(y*w+Math.max(0,X-1))*4,r=(y*w+Math.min(w-1,X+1))*4;for(let k=0;k<3;k++)tmp[o+k]=(src[l+k]+src[o+k]+src[r+k])/3;}
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){const o=(y*w+X)*4,u=(Math.max(0,y-1)*w+X)*4,dn=(Math.min(h-1,y+1)*w+X)*4;
+    for(let k=0;k<3;k++){const b=(tmp[u+k]+tmp[o+k]+tmp[dn+k])/3;a[o+k]=src[o+k]+amt*(src[o+k]-b);}}
+  x.putImageData(d,0,0);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.92)); return URL.createObjectURL(blob);
+}
+async function runEnhance(){
+  const items=allPhotos().filter(({ph})=>enh.sel.has(ph.id)); if(!items.length) return;
+  enh.busy=true; renderModal();
+  for(const {ph} of items){ph.state='run';renderModal();try{ph.enh=await enhanceUrl(ph.url);ph.use='enh';ph.state='done';}catch{ph.state='err';} renderModal(); await new Promise(r=>setTimeout(r,30));}
+  enh.busy=false; enh.sel.clear(); renderModal(); if(tab==='lib')renderLib();
+}
+function vEnhance(){
+  const list=allPhotos();
+  const head=`<div class="mh"><div><h2>Image Enhancer</h2><p class="msub">Избери само снимките, които искаш. Подобряването изправя светлото и тъмното и леко изостря. Цветовете не се пипат, защото цветът е белег за разпознаване. Оригиналът винаги остава.</p></div><button class="x" data-close aria-label="Затвори">✕</button></div>`;
+  if(!list.length) return head+`<div class="empty"><p><b>Още няма качени снимки.</b> Качи растение или избери снимки от компютъра, само за да ги подобриш.</p>
+    <div class="row"><button class="btn primary" data-go="upload">Качи растение</button><label class="btn" for="enhfile">Избери снимки<input id="enhfile" type="file" accept="image/*" multiple hidden></label></div></div>`;
+  const k=enh.sel.size;
+  return head+`<div class="egrid">${list.map(({ph,plant})=>`<article class="ecard ${enh.sel.has(ph.id)?'on':''}">
+      ${ph.enh?`<div class="cmp" style="--p:50%"><img src="${ph.url}" alt="Оригинал"><img class="after" src="${ph.enh}" alt="Подобрено копие"><span class="lbl l">Оригинал</span><span class="lbl r">Подобрено</span>
+        <input type="range" min="0" max="100" value="50" aria-label="Сравни оригинал и подобрено" data-cmp></div>`
+       :`<label class="epick"><img src="${ph.url}" alt=""><input type="checkbox" data-esel="${ph.id}" ${enh.sel.has(ph.id)?'checked':''} ${enh.busy?'disabled':''}><span class="box" aria-hidden="true"></span>${ph.state==='run'?'<span class="busy">Подобрява се…</span>':''}${ph.state==='err'?'<span class="busy err">Неуспешно. Оригиналът е непокътнат.</span>':''}</label>`}
+      <div class="emeta"><span class="fn">${esc(plant)}</span><span class="fm">${esc(ph.name)}</span>
+       ${ph.enh?`<div class="seg" role="radiogroup" aria-label="Коя версия да се показва"><label><input type="radio" name="use-${ph.id}" value="orig" data-use="${ph.id}" ${ph.use==='orig'?'checked':''}><span>Оригинал</span></label><label><input type="radio" name="use-${ph.id}" value="enh" data-use="${ph.id}" ${ph.use==='enh'?'checked':''}><span>Подобрено</span></label></div>`:''}
+      </div></article>`).join('')}</div>
+    <div class="mfoot"><label class="btn" for="enhfile">Добави снимки<input id="enhfile" type="file" accept="image/*" multiple hidden></label>
+      <button class="btn primary" data-runenh ${k&&!enh.busy?'':'disabled'}>${enh.busy?'Подобрява се…':`Подобри избраните · ${k}`}</button></div>`;
+}
+
+/* ---------- modal host ---------- */
+function renderModal(){
+  const host=document.getElementById('modalhost');
+  if(!modal){host.innerHTML='';document.body.style.overflow=openId===null?'':'hidden';return;}
+  const body=modal==='upload'?vUpload():vEnhance();
+  const scroll=host.querySelector('.mbox')?.scrollTop||0;
+  host.innerHTML=`<div class="ovl" id="movl" role="dialog" aria-modal="true" aria-label="${modal==='upload'?'Качи растение':'Image Enhancer'}"><div class="mbox">${body}</div></div>`;
+  host.querySelector('.mbox').scrollTop=scroll;
+  document.body.style.overflow='hidden';
+  const drop=document.getElementById('drop');
+  if(drop){['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+    ['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+    drop.addEventListener('drop',e=>{if(e.dataTransfer.files.length)addFiles([...e.dataTransfer.files]);});}
+  if(!host.contains(document.activeElement)){const f=host.querySelector('[data-close]');f&&f.focus({preventScroll:true});}
+}
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='upfile'||t.id==='upfile2'){if(t.files.length)addFiles([...t.files]);}
+  else if(t.id==='camfile'){if(t.files.length){resetUp();up.mode='one';openModal('upload',document.querySelector('[data-act="camera"]'));addFiles([...t.files]);}t.value='';}
+  else if(t.name==='upmode'){up.mode=t.value;}
+  else if(t.dataset.esel){t.checked?enh.sel.add(t.dataset.esel):enh.sel.delete(t.dataset.esel);renderModal();}
+  else if(t.dataset.use){const ph=allPhotos().find(x=>x.ph.id===t.dataset.use).ph;ph.use=t.value;renderLib&&tab==='lib'&&renderLib();}
+  else if(t.id==='enhfile'){[...t.files].forEach(f=>{if(OK_TYPES.includes(f.type))enh.extra.push({id:Math.random().toString(36).slice(2),url:URL.createObjectURL(f),name:f.name,enh:null,use:'orig'});});renderModal();}
+});
+document.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.cmp!==undefined){e.target.parentElement.style.setProperty('--p',e.target.value+'%');}});
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');
+  if(a){const v=a.dataset.act;
+    if(v==='upload'){if(up.phase==='analyzing')return openModal('upload',a);if(up.phase!=='review')resetUp();openModal('upload',a);}
+    else if(v==='enhance'){openModal('enhance',a);}
+    else if(v==='camera'){document.getElementById('camfile').click();}
+    return;}
+  const vb=e.target.closest('[data-view]'); if(vb){libView=vb.dataset.view;renderLib();return;}
+  const fs=e.target.closest('[data-famsel]'); if(fs){libFam=fs.dataset.famsel;libView='plants';libPage=0;renderLib();return;}
+  const pg=e.target.closest('[data-pg]'); if(pg&&!pg.disabled){libPage=+pg.dataset.pg;renderLib();document.getElementById('libbody').scrollIntoView({block:'start',behavior:'smooth'});return;}
+  if(!modal) return;
+  if(e.target.id==='movl'||e.target.closest('[data-close]')){if(!enh.busy&&up.phase!=='analyzing')closeModal();return;}
+  const rm=e.target.closest('[data-rm]'); if(rm){up.items=up.items.filter(i=>i.id!==rm.dataset.rm);if(!up.items.length)up.phase='pick';renderModal();return;}
+  if(e.target.closest('[data-back]')){resetUp();renderModal();return;}
+  if(e.target.closest('[data-analyze]')){analyze();return;}
+  if(e.target.closest('[data-adddrafts]')){addDrafts();return;}
+  if(e.target.closest('[data-runenh]')){runEnhance();return;}
+  const go=e.target.closest('[data-go]'); if(go){resetUp();modal='upload';renderModal();}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal&&!enh.busy&&up.phase!=='analyzing'){closeModal();}});
+
+
+/* profile in the Flora 2 detail format, as questions and answers */
+const QA=[['recognition','Как да го разпозная?'],['habitat','Къде расте?'],['lookalikes','С какво може да се сбърка?'],['benefits','Каква е ползата и ролята му в природата?'],['risks','Има ли рискове?'],['uses','За какво се използва?'],['fun_fact','Любопитен факт']];
+let openId=null;
+function vProfile(p){
+  const d=detailFor(p);
+  const src={legacy_ai:'Стар AI текст',ai:'AI предложение',manual:'Ръчно въведено'}[p.ns];
+  const gb={accepted:'Прието име в GBIF',synonym:'Синоним в GBIF',none:'Не е намерено в GBIF'}[p.gbif]||'Не е проверено в GBIF';
+  const rev={match:'Прегледан: съвпада',changed:'Прегледан: сменено',kept:'Прегледан: запазено'}[p.dec]||'Непрегледан';
+  const issues=p.iss.map(k=>`<span class="tag ${ISSUES[k].sev==='bad'?'t-bad':'t-ai'}">${ISSUES[k].l}</span>`).join('');
+  const qa=d?QA.map(([k,q])=>{const v=d.ai[k];
+      return `<div class="qa"><h3>${q} <span class="tag t-src">AI текст · непроверен</span></h3>
+      ${v?`<p>${v}</p>`:`<p style="color:var(--muted)">Няма отговор в стария текст.</p>`}
+      ${d.ai.warn&&d.ai.warn[k]?`<p class="warn">⚠ ${d.ai.warn[k]}</p>`:''}</div>`}).join('')
+    : `<div class="qa"><h3>Въпроси и отговори</h3><p style="color:var(--muted)">${p.isNew?'Това е нова чернова. След избор на кандидат от Pl@ntNet и проверка в GBIF тук ще има данни с източник.':'Старият AI текст е в базата, в полето legacy_ai. В прототипа е зареден само за трите примерни вида: камбанката, еделвайса и върбовката.'}</p></div>`;
+  return `<div class="ovl" id="ovl" role="dialog" aria-modal="true" aria-label="${p.bg}">
+   <div class="prof">
+    <button class="x" id="closeProf" aria-label="Затвори">✕</button>
+    <div class="pv${p.photos?' photo':''}">${p.photos?`<img src="${photoSrc(p.photos[0])}" alt="${esc(p.bg)}">`:d?art(d.art):`<span class="ini">${p.sci[0]}</span>`}</div>
+    <div class="pt">
+      <div><h2>${p.bg}</h2></div>
+      <div class="ps">${p.sci}</div>
+      <div class="row"><span class="tag t-ai">${src}</span>${d?`<button class="btn" data-sheet="${d.id}" style="min-height:36px;padding:6px 12px;font-size:.82rem">Хербарен лист →</button>`:''}${d&&d.ai.conf?`<span class="tag t-ex">старият AI: ${d.ai.conf}</span>`:''}</div>
+      ${d&&d.ai.warn&&d.ai.warn.conf?`<p class="warn" style="margin:0;font-size:.85rem;color:var(--warn)">⚠ ${d.ai.warn.conf}</p>`:''}
+      <div class="meta">
+        <div><div class="k">Семейство</div><div>${p.fam}</div></div>
+        <div><div class="k">Статус на името</div><div>${gb}</div></div>
+        <div><div class="k">Преглед</div><div>${rev}</div></div>
+        <div><div class="k">Снимки</div><div>${p.n}${p.nt<p.n?`, ${p.n-p.nt} без дата`:''}</div></div>
+      </div>
+      <div><div class="k">Снимки по месеци</div><div class="pheno">${['Я','Ф','М','А','М','Ю','Ю','А','С','О','Н','Д'].map((m,i)=>`<span class="${p.months.includes(String(i+1).padStart(2,'0'))?'on':''}">${m}</span>`).join('')}</div>${p.nt<p.n?`<p style="margin:6px 0 0;font-size:.82rem;color:var(--muted)">${p.n-p.nt} от ${p.n} снимки са без дата и не се броят.</p>`:''}</div>
+      ${issues?`<div><div class="k" style="margin-bottom:6px">Какво липсва или е за проверка</div><div class="row">${issues}</div>${BG_SUSPECT[p.sci]?`<p style="margin:8px 0 0;font-size:.88rem">${BG_SUSPECT[p.sci]}</p>`:''}</div>`:''}
+      ${qa}
+    </div></div></div>`;
+}
+
+/* health over all 98 */
+let hFilter='';
+function vHealth(){
+  const cnt=k=>ALL.filter(p=>p.iss.includes(k)).length;
+  const clean=ALL.filter(p=>!p.iss.some(k=>ISSUES[k].sev==='bad')).length;
+  const list=hFilter?ALL.filter(p=>p.iss.includes(hFilter)):ALL.filter(p=>p.iss.some(k=>ISSUES[k].sev==='bad'));
+  return `<section class="panel">
+  <div class="card row" style="justify-content:space-between">
+    <div><span class="eyebrow">Записи без сериозен проблем</span><div class="score">${clean} / ${ALL.length}</div></div>
+    <p style="margin:0;max-width:52ch;font-size:.9rem;color:var(--muted)">Временен инструмент. Червените са грешки за поправка, жълтите са липси. Когато каталогът е изчистен, таблото се маха.</p>
+  </div>
+  <div class="hchips">${Object.keys(ISSUES).map(k=>`<button class="hchip" data-hf="${k}" aria-pressed="${hFilter===k}"><span class="dot ${ISSUES[k].sev}" aria-hidden="true"></span> ${ISSUES[k].l} <b>${cnt(k)}</b></button>`).join('')}</div>
+  <h3>${hFilter?ISSUES[hFilter].l:'Всички с червен проблем'} · ${list.length}</h3>
+  <div class="tablewrap"><table><thead><tr><th>Запис</th><th>Българско име</th><th>Проблеми</th></tr></thead><tbody>
+    ${list.map(p=>`<tr><td><button data-open="${p.i}" style="all:unset;cursor:pointer" class="sci">${p.sci}</button></td><td>${p.bg}</td><td><div class="row">${p.iss.map(k=>`<span class="tag ${ISSUES[k].sev==='bad'?'t-bad':'t-ai'}">${ISSUES[k].l}</span>`).join('')}</div></td></tr>`).join('')}
+  </tbody></table></div>
+  <p style="margin:0;font-size:.88rem">Дубликатите са точно случаят за модела „вид → наблюдения“. Например трите записа на <span class="sci">Silene vulgaris</span> стават един вид с три находки.</p>
+  </section>`;
+}
+
+/* ---------- render ---------- */
+const VIEWS={lib:vLib,sheet:vSheet,search:vSearch,health:vHealth};
+let lastFocus=null;
+function render(){
+  document.getElementById('speciesChips').innerHTML=S.map(s=>`<button class="chip" data-sp="${s.id}" aria-pressed="${s.id===cur}"><span class="sci">${s.sci.split(' ').slice(0,2).join(' ')}</span>${s.protected?'<span class="tag t-bad">🔒</span>':''}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===tab));
+  document.getElementById('speciesChips').hidden=tab!=='sheet';
+  document.getElementById('view').innerHTML=VIEWS[tab]();
+  if(tab==='search'){const q=document.getElementById('q');q.addEventListener('input',renderResults);renderResults();}
+  if(tab==='lib'){
+    document.getElementById('libq').addEventListener('input',e=>{libQ=e.target.value;libPage=0;renderLib()});
+    document.getElementById('libsort').addEventListener('change',e=>{libSort=e.target.value;libPage=0;renderLib()});
+    document.getElementById('libmonth').addEventListener('change',e=>{libMonth=e.target.value;libPage=0;renderLib()});
+    document.getElementById('libsize').addEventListener('change',e=>{libSize=+e.target.value;libPage=0;renderLib()});
+    renderLib();
+  }
+  renderProfile();
+}
+function renderProfile(){
+  const host=document.getElementById('ovlhost');
+  host.innerHTML=openId===null?'':vProfile(ALL[openId]);
+  document.body.style.overflow=openId===null?'':'hidden';
+  if(openId!==null) document.getElementById('closeProf').focus();
+}
+function closeProfile(){openId=null;renderProfile();if(lastFocus&&document.contains(lastFocus))lastFocus.focus();}
+document.addEventListener('click',e=>{
+  if(e.target.id==='ovl'||e.target.closest('#closeProf')){closeProfile();return;}
+  const o=e.target.closest('[data-open]'); if(o){lastFocus=o;openId=+o.dataset.open;renderProfile();return;}
+  const t=e.target.closest('[data-tab]'); if(t){tab=t.dataset.tab;render();return;}
+  const c=e.target.closest('[data-sp]'); if(c){cur=c.dataset.sp;render();return;}
+  const sh=e.target.closest('[data-sheet]'); if(sh){cur=sh.dataset.sheet;tab='sheet';openId=null;render();window.scrollTo(0,0);return;}
+  const h=e.target.closest('[data-hf]'); if(h){hFilter=hFilter===h.dataset.hf?'':h.dataset.hf;render();return;}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&openId!==null)closeProfile();});
+(function(){
+  const fams=new Set(ALL.map(p=>famLatin(p.fam))).size, ph=ALL.reduce((a,p)=>a+p.n,0);
+  document.getElementById('stats').innerHTML=`<span><b>${ALL.length}</b> записа</span><span><b>${fams}</b> семейства</span><span><b>${ph}</b> снимки</span><span><b>${ALL.filter(p=>p.iss.includes('dup')).length}</b> дубликата за обединяване</span>`;
+  let f='<path d="M100 400 C102 300 98 180 100 10" stroke="currentColor" stroke-width="3" fill="none"/>';
+  for(let i=0;i<22;i++){const y=380-i*16, L=70*(1-i/26);
+    f+=`<path d="M100 ${y} q${-L*.5} ${-8} ${-L} ${-20} q${L*.55} ${4} ${L} ${20}Z" fill="currentColor"/><path d="M100 ${y} q${L*.5} ${-8} ${L} ${-20} q${-L*.55} ${4} ${-L} ${20}Z" fill="currentColor"/>`;}
+  document.getElementById('frond').innerHTML=f;
+})();
+render();
+</script>
