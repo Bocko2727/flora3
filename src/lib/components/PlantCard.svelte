@@ -91,7 +91,8 @@
 	/* Over a photo the text sits on a dark scrim in both themes, so it stays light. */
 	.photo .name { color: #f2f6f3; }
 	.photo .latin { color: #c3cfc8; }
-	.photo :global(.status-badge:not(.community):not(.ai_gbif)) { color: #c3cfc8; border-color: #c3cfc8; background: rgb(14 23 20 / 0.6); }
+	.photo :global(.status-badge:not(.community)) { color: #c3cfc8; border-color: #c3cfc8; background: rgb(14 23 20 / 0.6); }
+	.photo :global(.status-badge.ai_gbif) { color: #d8b460; border-color: #d8b460; }
 	@media (prefers-reduced-motion: reduce) {
 		img { transition: none; }
 		.card:hover img { transform: none; }
