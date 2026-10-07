@@ -12,7 +12,7 @@
 - Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
 
 ## Следващи задачи (по ред)
-1. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
+1. CI фаза B (job `db-e2e`: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`) — в PR от `chore/ci-full`; чака зелен run и merge.
 2. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
 3. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.
 
