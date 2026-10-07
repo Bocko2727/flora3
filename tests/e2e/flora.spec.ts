@@ -30,6 +30,11 @@ test.describe.configure({ mode: 'serial' });
 let plantUrl = '';
 const plantId = () => plantUrl.split('/').pop()!;
 
+/** The evidence and status live in the second tab of the plant page. */
+async function openEvidence(page: Page) {
+	await page.getByRole('tab', { name: 'Доказателства' }).click();
+}
+
 test('login rejects a wrong password and protects pages', async ({ page }) => {
 	await gotoSettled(page, '/');
 	await expect(page).toHaveURL(/\/login\?next=%2F/);
@@ -147,6 +152,7 @@ test('editor edits the plant, changes the primary photo and sees the draft statu
 test('editor sees the evidence panel with name check and iNaturalist link', async ({ page }) => {
 	await login(page, EDITOR);
 	await gotoSettled(page, plantUrl);
+	await openEvidence(page);
 	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
 	await expect(page.getByText('Името не е проверено в GBIF.')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toBeVisible();
@@ -162,6 +168,7 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 	await expect(page.getByRole('link', { name: '+ Растение' })).toHaveCount(0);
 	await page.getByRole('link', { name: /Обикновена паричка/ }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
+	await openEvidence(page);
 	await expect(page.getByRole('link', { name: 'Редактирай' })).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: 'Доказателства' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Провери името в GBIF' })).toHaveCount(0);
@@ -287,11 +294,11 @@ test('identify button stays locked while AI is thinking', async ({ page }) => {
 	await logout(page);
 });
 
-test('status stamp text is at least 11px and stays inside the ring', async ({ page }) => {
+test('status badge text is at least 11px and is not clipped', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 780 });
 	await login(page, EDITOR);
 	const measure = () =>
-		page.locator('.stamp').evaluate((el) => {
+		page.locator('.status-badge').evaluate((el) => {
 			const label = el.lastElementChild as HTMLElement;
 			return {
 				size: parseFloat(getComputedStyle(label).fontSize),
@@ -299,6 +306,7 @@ test('status stamp text is at least 11px and stays inside the ring', async ({ pa
 			};
 		});
 	await gotoSettled(page, aiPlantUrl);
+	await openEvidence(page);
 	expect(await measure()).toEqual({ size: expect.any(Number), fits: true });
 	expect((await measure()).size).toBeGreaterThanOrEqual(11);
 
@@ -311,7 +319,8 @@ test('status stamp text is at least 11px and stays inside the ring', async ({ pa
 		.update({ inat_quality_grade: 'research', inat_taxon_name: plant.data!.scientific_name, inat_observation_id: 1 })
 		.eq('id', id);
 	await gotoSettled(page, aiPlantUrl);
-	await expect(page.locator('.stamp')).toContainText('Потвърдено');
+	await openEvidence(page);
+	await expect(page.locator('.status-badge')).toContainText('Потвърдено');
 	const community = await measure();
 	expect(community.fits).toBe(true);
 	expect(community.size).toBeGreaterThanOrEqual(11);
@@ -447,7 +456,8 @@ test('editor reviews legacy plants', async ({ page }) => {
 	expect(decisions.data!.filter((d) => d.decision === 'kept')).toHaveLength(2);
 
 	await gotoSettled(page, `/plants/${bellis}`);
-	await expect(page.locator('.stamp')).toContainText('AI · прието име');
+	await openEvidence(page);
+	await expect(page.locator('.status-badge')).toContainText('AI · прието име');
 	await logout(page);
 });
 
