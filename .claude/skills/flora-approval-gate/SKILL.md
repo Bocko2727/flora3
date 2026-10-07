@@ -81,7 +81,7 @@ Merge на PR е винаги стъпка на собственика; аген
 | решение за двете гъби в `/review` (един запис) | §5.2 |
 | нова env променлива във Vercel | §5.2 |
 | 30 заявки към Pl@ntNet | §5.2 |
-| `npm install` на нов пакет, Svelte MCP | §5.1 |
+| `npm install` на нов пакет, нов MCP сървър (Svelte MCP е одобрен и в `.mcp.json`; Playwright MCP чака) | §5.1 |
 | merge на PR | §5.1 (стъпка на собственика) |
 | триене на снимка от Storage | §5.1 |
 | `git push --force` | §5.1 (и е блокирано в `.claude/settings.json`) |
