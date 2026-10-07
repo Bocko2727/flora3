@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
-import { buildDrafts, fileKey, mergeSelection, requestCount } from '$lib/upload/drafts';
+import { buildDrafts, fileKey, keepIds, mergeSelection, requestCount } from '$lib/upload/drafts';
 
 const file = (name: string, size = 10, lastModified = 1) =>
 	new File([new Uint8Array(size)], name, { type: 'image/jpeg', lastModified });
@@ -79,5 +79,38 @@ describe('mergeSelection', () => {
 	it('keeps the current choice when nothing new arrives (a cancelled camera)', () => {
 		const current = [file('a.jpg')];
 		expect(mergeSelection(current, [])).toEqual(current);
+	});
+});
+
+describe('keepIds', () => {
+	it('"each": a picture that was already a card keeps its id when another one is added', () => {
+		const first = buildDrafts([file('a.jpg')], 'each', ids).drafts;
+		const next = buildDrafts([file('a.jpg'), file('b.jpg')], 'each', ids).drafts;
+		const kept = keepIds(first, next, 'each');
+		expect(kept[0].id).toBe(first[0].id);
+		expect(kept[1].id).toBe(next[1].id);
+	});
+
+	it('"one": the single card keeps its id when pictures are added', () => {
+		const first = buildDrafts([file('a.jpg')], 'one', ids).drafts;
+		const next = buildDrafts([file('a.jpg'), file('b.jpg')], 'one', ids).drafts;
+		expect(keepIds(first, next, 'one')[0].id).toBe(first[0].id);
+	});
+
+	it('never gives two cards the same id', () => {
+		const first = buildDrafts([file('a.jpg')], 'each', ids).drafts;
+		const next = buildDrafts([file('a.jpg'), file('a.jpg', 11)], 'each', ids).drafts;
+		const out = keepIds(first, next, 'each');
+		expect(new Set(out.map((d) => d.id)).size).toBe(2);
+	});
+});
+
+describe('mergeSelection with buildDrafts', () => {
+	it('still respects the limit and the duplicate rule after adding', () => {
+		const full = Array.from({ length: MAX_FILES_PER_BATCH }, (_, i) => file(`p${i}.jpg`));
+		const out = buildDrafts(mergeSelection(full, [file('extra.jpg'), file('p0.jpg')]), 'each', ids);
+		expect(out.drafts).toHaveLength(MAX_FILES_PER_BATCH);
+		expect(out.tooMany).toBe(true);
+		expect(out.duplicates).toBe(1);
 	});
 });

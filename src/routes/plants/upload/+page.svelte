@@ -2,7 +2,7 @@
 	import UploadDraftCard from '$lib/components/UploadDraftCard.svelte';
 	import { IDENTIFY_MAX_IMAGES, identifyBlobs } from '$lib/identify/client';
 	import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
-	import { buildDrafts, mergeSelection, requestCount, type Draft, type UploadMode } from '$lib/upload/drafts';
+	import { buildDrafts, keepIds, mergeSelection, requestCount, type Draft, type UploadMode } from '$lib/upload/drafts';
 	import { analyzeDrafts, type DraftState } from '$lib/upload/queue';
 	import { onDestroy, untrack } from 'svelte';
 	import type { PageProps } from './$types';
@@ -45,11 +45,11 @@
 	const photosBeyondAnalysis = $derived(mode === 'one' && selected.length > IDENTIFY_MAX_IMAGES);
 
 	// Changing the files or the mode only rebuilds the cards. It never sends anything.
-	function rebuild() {
+	function rebuild(keep = false) {
 		token += 1;
 		running = false;
 		const plan = buildDrafts(selected, mode);
-		drafts = plan.drafts;
+		drafts = keep ? keepIds(drafts, plan.drafts, mode) : plan.drafts;
 		tooMany = plan.tooMany;
 		duplicates = plan.duplicates;
 		states = {};
@@ -58,14 +58,21 @@
 	function pickFiles(list: FileList | null) {
 		// A cancelled file dialog on a phone gives an empty list; that must not wipe the choice.
 		if (!list || list.length === 0 || frozen) return;
-		selected = [...list];
-		rebuild();
+		selected = mergeSelection(selected, [...list]);
+		rebuild(true);
 	}
 
 	// "Снимай сега": each picture from the camera is added to the choice; nothing is sent.
 	function addPicture(list: FileList | null) {
 		if (!list || list.length === 0 || frozen) return;
 		selected = mergeSelection(selected, [...list]);
+		rebuild(true);
+	}
+
+	function clearChoice() {
+		if (frozen) return;
+		selected = [];
+		inputKey += 1;
 		rebuild();
 	}
 
@@ -116,9 +123,12 @@
 
 {#key inputKey}
 	<div class="picker">
-		<label for="files">Снимки от устройството (най-много {MAX_FILES_PER_BATCH})</label>
+		<label for="files">Снимки от устройството — добавят се към избраните (най-много {MAX_FILES_PER_BATCH})</label>
 		<input id="files" type="file" accept="image/*" multiple disabled={frozen} onchange={(e) => pickFiles(e.currentTarget.files)} />
 	</div>
+	{#if selected.length > 0 && !frozen}
+		<p><button type="button" onclick={clearChoice}>Изчисти избора</button></p>
+	{/if}
 	<label class="button camera" class:disabled={frozen}>
 		Снимай сега
 		<input
@@ -205,8 +215,9 @@
 	.picker input { min-height: 44px; }
 	.camera { position: relative; overflow: hidden; align-self: flex-start; margin-bottom: var(--space-3); min-height: 44px; }
 	.camera:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
-	.camera input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-	.camera.disabled { opacity: 0.5; }
+	.camera input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+	.camera.disabled { opacity: 0.5; cursor: default; }
+	.camera.disabled input { cursor: default; }
 	.confirm { margin: var(--space-3) 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 	.confirm p { margin: 0; }
 	.cards { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }

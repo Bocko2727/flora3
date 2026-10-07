@@ -574,8 +574,11 @@ test('picture now: camera pictures are added one by one and nothing is sent', as
 	await expect(camera).toHaveAttribute('accept', 'image/*');
 	await camera.setInputFiles(fixture('leaf-a.jpg'));
 	await expect(page.getByRole('heading', { name: 'Растение 1' })).toBeVisible();
+	await page.getByRole('region', { name: 'Растение 1' }).getByLabel('Българско име').fill('Паричка');
 	await camera.setInputFiles(fixture('leaf-b.jpg'));
 	await expect(page.getByRole('heading', { name: 'Растение 2' })).toBeVisible();
+	// Adding a picture must not wipe what was already typed on the first card.
+	await expect(page.getByRole('region', { name: 'Растение 1' }).getByLabel('Българско име')).toHaveValue('Паричка');
 	await expect(page.getByText(/Ще се изпратят 2 заявки към Pl@ntNet/)).toBeVisible();
 	expect(calls).toBe(0);
 	await logout(page);
