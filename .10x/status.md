@@ -1,8 +1,9 @@
 # Статус — Флора 3
-Обновено: 2026-10-06. Тук е само текущото състояние и предстоящото. Историята е в git (`git log`, PR-ите).
+Обновено: 2026-10-07. Тук е само текущото състояние и предстоящото. Историята е в git (`git log`, PR-ите).
 
 ## Сега
-- `main` = production = `f2c53aa` (PR #14). Vercel production deploy: READY. Отворени PR-и: няма. CI (фаза A: `check`, `test:unit`, `build`) е зелен.
+- `main` = production (актуалният SHA и отворените PR-и: `git log origin/main`, GitHub). CI (фаза A): `fast` (`check`, `test:unit`, `build`) и `secrets-scan` (gitleaks).
+- Tooling: Svelte MCP (`.mcp.json`), `dependabot.yml` (седмично; PR-ите ги merge-ва собственикът), PR шаблон.
 - Хостнат Supabase (`lfmkjxcaokndltdylama`): 98 растения, 118 снимки.
 - Миграции: в `supabase_migrations` са 5 (init, explicit_grants, identification_status, editors_no_delete, legacy_review). `delete_plant` и `drop_self_confirm` са приложени, но липсват в историята. Не ползвай `supabase db push`.
 - `/review`: решени 94 от 96; остават двете гъби (*Agaricales* sp., *Russula* sp.).
@@ -11,7 +12,7 @@
 - Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
 
 ## Следващи задачи (по ред)
-1. `feat/species-profile-qa` — профил като въпроси и отговори от `legacy_ai` („AI текст · непроверен“) + лента „Снимки по месеци“ (`docs/prototype/HANDOFF.md` §3.4).
+1. `feat/species-profile-qa` (§3.4) — готово, PR #24 е отворен и чака ревю и merge от собственика.
 2. `feat/upload-many` — „Качи растение“ за няколко растения; една заявка към Pl@ntNet на растение (§3.5).
 3. `feat/picture-now` — камера на момента, същият поток (§3.6).
 4. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.

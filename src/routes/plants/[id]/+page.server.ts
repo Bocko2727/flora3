@@ -10,6 +10,7 @@ import { signPaths } from '$lib/server/signed-urls';
 import { isNameSource } from '$lib/status';
 import { linkInat, refreshNameCheck, unlinkInat, useAcceptedName } from '$lib/server/verification';
 import { parseLegacyAi } from '$lib/types';
+import { photoMonths } from '$lib/catalog/months';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -49,6 +50,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		},
 		latest: latestIdentification,
 		legacy: parseLegacyAi(legacy_ai),
+		months: photoMonths(photos.map((photo) => photo.taken_at)),
+		datedPhotos: photos.filter((photo) => photo.taken_at).length,
 		photos: photos.map((photo) => ({
 			id: photo.id,
 			url: urls.get(photo.path) ?? null,
