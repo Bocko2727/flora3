@@ -47,7 +47,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:start
-      # Записва .env само с ключовете на локалния stack; не се отпечатва.
+      # Записва .env само с ключовете на временния локален stack (env:local не ги
+      # отпечатва; `supabase start` показва стандартните локални ключове — не дават
+      # достъп до хоста).
       - run: npm run env:local
       - run: npm run db:reset
       - run: npm run test:db
