@@ -15,6 +15,7 @@
 	let saving = $state(false);
 	let confirmDelete = $state(false);
 	let deleting = $state(false);
+	let enhancing = $state(false);
 	let lastAction = $state<'update' | 'delete' | null>(null);
 
 	let values = $state<PlantFormValues>(untrack(() => ({ ...data.values })));
@@ -124,7 +125,7 @@
 
 <section class="stack">
 	<h2>Снимки</h2>
-	<PhotoManager photos={data.photos} />
+	<PhotoManager photos={data.photos} bind:enhancing />
 	<PhotoUploader
 		plantId={data.plant.id}
 		ownerId={data.user?.id ?? ''}
@@ -139,7 +140,7 @@
 	<h2>Изтриване</h2>
 	{#if form?.message && lastAction === 'delete'}<p class="error" role="alert">{form.message}</p>{/if}
 	{#if !confirmDelete}
-		<button type="button" onclick={() => (confirmDelete = true)}>Изтрий растението</button>
+		<button type="button" disabled={enhancing} onclick={() => (confirmDelete = true)}>Изтрий растението</button>
 	{:else}
 		<form
 			method="POST"
@@ -156,7 +157,7 @@
 		>
 			<p>Сигурен ли си? Растението и всичките му снимки ще бъдат изтрити завинаги.</p>
 			<div class="row">
-				<button type="submit" class="danger" disabled={deleting}>{deleting ? 'Изтриване…' : 'Да, изтрий завинаги'}</button>
+				<button type="submit" class="danger" disabled={deleting || enhancing}>{deleting ? 'Изтриване…' : 'Да, изтрий завинаги'}</button>
 				<button type="button" disabled={deleting} onclick={() => (confirmDelete = false)}>Отказ</button>
 			</div>
 		</form>

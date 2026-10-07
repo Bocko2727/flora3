@@ -22,6 +22,8 @@
 
 	export function open(i: number) {
 		index = i;
+		// Every viewer session starts on the original; the enhanced copy is an explicit choice.
+		showEnhanced = {};
 		isOpen = true;
 		dialog?.showModal();
 	}

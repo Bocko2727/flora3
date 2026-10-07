@@ -14,13 +14,12 @@
 		enhancedUrl: string | null;
 		isPrimary: boolean;
 	};
-	let { photos }: { photos: ManagedPhoto[] } = $props();
+	let { photos, enhancing = $bindable(false) }: { photos: ManagedPhoto[]; enhancing?: boolean } = $props();
 
 	let busyId = $state<string | null>(null);
 	let confirmingId = $state<string | null>(null);
 	let message = $state('');
 	let selected = $state<Record<string, boolean>>({});
-	let enhancing = $state(false);
 	let progress = $state<Record<string, 'run' | 'done' | 'error'>>({});
 	let split = $state<Record<string, number>>({});
 
@@ -48,7 +47,7 @@
 	// Only the chosen photos, one at a time, in the browser. The original is read, never written:
 	// the result goes to its own `_enh.jpg` key.
 	async function enhanceSelected() {
-		if (enhancing || selectedPhotos.length === 0 || tooManySelected) return;
+		if (enhancing || busyId !== null || selectedPhotos.length === 0 || tooManySelected) return;
 		enhancing = true;
 		message = '';
 		progress = {};
@@ -85,7 +84,7 @@
 			Image Enhancer изправя светлото и тъмното и леко изостря. Цветовете не се пипат, а оригиналът винаги остава.
 			Избери снимките, които искаш (най-много {ENHANCE_MAX_PHOTOS}).
 		</p>
-		<button type="button" class="primary" disabled={enhancing || selectedPhotos.length === 0 || tooManySelected} onclick={enhanceSelected}>
+		<button type="button" class="primary" disabled={enhancing || busyId !== null || selectedPhotos.length === 0 || tooManySelected} onclick={enhanceSelected}>
 			{enhancing ? 'Подобрява се…' : `Подобри избраните (${selectedPhotos.length})`}
 		</button>
 		{#if tooManySelected}<p class="field-error">Най-много {ENHANCE_MAX_PHOTOS} снимки наведнъж.</p>{/if}
@@ -135,7 +134,7 @@
 					{:else}
 						<button
 							type="button"
-							disabled={busyId !== null}
+							disabled={busyId !== null || enhancing}
 							onclick={() => act(photo.id, () => setPrimaryPhoto(getBrowserSupabase(), photo.id))}
 						>
 							Направи основна
@@ -145,7 +144,7 @@
 						<button
 							type="button"
 							class="danger"
-							disabled={busyId !== null}
+							disabled={busyId !== null || enhancing}
 							onclick={() =>
 								act(photo.id, () =>
 									deletePhoto(getBrowserSupabase(), { id: photo.id, path: photo.path, thumb_path: photo.thumbPath })
@@ -155,7 +154,7 @@
 						</button>
 						<button type="button" onclick={() => (confirmingId = null)}>Отказ</button>
 					{:else}
-						<button type="button" disabled={busyId !== null} onclick={() => (confirmingId = photo.id)}>Изтрий</button>
+						<button type="button" disabled={busyId !== null || enhancing} onclick={() => (confirmingId = photo.id)}>Изтрий</button>
 					{/if}
 				</div>
 			</li>
