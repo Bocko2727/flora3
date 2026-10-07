@@ -2,6 +2,7 @@
 	import Evidence from '$lib/components/Evidence.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import LegacyAiPanel from '$lib/components/LegacyAiPanel.svelte';
+	import PhotoMonths from '$lib/components/PhotoMonths.svelte';
 	import { sameName } from '$lib/identify/types';
 	import { statusView } from '$lib/status';
 	import type { PageProps } from './$types';
@@ -110,6 +111,8 @@
 			</section>
 		{/if}
 	{/each}
+
+	<PhotoMonths months={data.months} total={data.photos.length} dated={data.datedPhotos} />
 
 	<LegacyAiPanel legacy={data.legacy} />
 </div>
