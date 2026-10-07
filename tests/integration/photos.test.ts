@@ -5,7 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/lib/database.types';
 import { UserFacingError } from '$lib/errors';
 import type { ProcessedPhoto } from '$lib/photos/process';
-import { deletePhoto, findPhotoBySha, savePhoto, setPrimaryPhoto } from '$lib/photos/storage';
+import { deletePhoto, findPhotoBySha, removeEnhanced, saveEnhanced, savePhoto, setPrimaryPhoto } from '$lib/photos/storage';
+import { findEnhanced } from '$lib/server/enhanced';
 import { createPlant } from '$lib/server/plants';
 import { signPaths } from '$lib/server/signed-urls';
 import { EDITOR, VIEWER, ensureUser, resetCatalog, signedInClient } from '../helpers/supabase';
@@ -132,5 +133,54 @@ describe('photo storage', () => {
 		const urls = await signPaths(editor, [first.path, second.path]);
 		expect([...urls.keys()]).toEqual([first.path]);
 		expect((await fetch(urls.get(first.path)!)).status).toBe(200);
+	});
+});
+
+describe('enhanced copy', () => {
+	const enhancedBlob = async () =>
+		new Blob([new Uint8Array(await sharp({ create: { width: 32, height: 32, channels: 3, background: '#88aa66' } }).jpeg().toBuffer())], {
+			type: 'image/jpeg'
+		});
+	const bytesOf = async (path: string) => {
+		const urls = await signPaths(editor, [path]);
+		return Buffer.from(await (await fetch(urls.get(path)!)).arrayBuffer());
+	};
+
+	it('is a separate file: the original and its thumbnail stay byte for byte the same', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '8') });
+		const before = await bytesOf(row.path);
+		const thumbBefore = await bytesOf(row.thumb_path);
+
+		await saveEnhanced(editor, row.path, await enhancedBlob());
+
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(3);
+		expect((await bytesOf(row.path)).equals(before)).toBe(true);
+		expect((await bytesOf(row.thumb_path)).equals(thumbBefore)).toBe(true);
+		expect([...(await findEnhanced(editor, [row.path]))]).toEqual([row.path]);
+		const { data } = await editor.from('plant_photos').select('sha256, path').eq('id', row.id).single();
+		expect(data).toEqual({ sha256: row.sha256, path: row.path });
+	});
+
+	it('can be removed on its own without touching the original', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '9') });
+		await saveEnhanced(editor, row.path, await enhancedBlob());
+		await removeEnhanced(editor, [row.path]);
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(2);
+		expect((await findEnhanced(editor, [row.path])).size).toBe(0);
+	});
+
+	it('is deleted together with its photo', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '7') });
+		await saveEnhanced(editor, row.path, await enhancedBlob());
+		await deletePhoto(editor, row);
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(0);
+	});
+
+	it('is not writable or removable by a viewer', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '6') });
+		await expect(saveEnhanced(viewer, row.path, await enhancedBlob())).rejects.toBeInstanceOf(UserFacingError);
+		await saveEnhanced(editor, row.path, await enhancedBlob());
+		await removeEnhanced(viewer, [row.path]).catch(() => {});
+		expect((await findEnhanced(viewer, [row.path])).size).toBe(1);
 	});
 });
