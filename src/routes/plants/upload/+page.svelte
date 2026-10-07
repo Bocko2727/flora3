@@ -2,7 +2,7 @@
 	import UploadDraftCard from '$lib/components/UploadDraftCard.svelte';
 	import { IDENTIFY_MAX_IMAGES, identifyBlobs } from '$lib/identify/client';
 	import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
-	import { buildDrafts, requestCount, type Draft, type UploadMode } from '$lib/upload/drafts';
+	import { buildDrafts, mergeSelection, requestCount, type Draft, type UploadMode } from '$lib/upload/drafts';
 	import { analyzeDrafts, type DraftState } from '$lib/upload/queue';
 	import { onDestroy, untrack } from 'svelte';
 	import type { PageProps } from './$types';
@@ -62,6 +62,13 @@
 		rebuild();
 	}
 
+	// "Снимай сега": each picture from the camera is added to the choice; nothing is sent.
+	function addPicture(list: FileList | null) {
+		if (!list || list.length === 0 || frozen) return;
+		selected = mergeSelection(selected, [...list]);
+		rebuild();
+	}
+
 	function setMode(next: UploadMode) {
 		if (frozen || next === mode) return;
 		mode = next;
@@ -112,6 +119,20 @@
 		<label for="files">Снимки от устройството (най-много {MAX_FILES_PER_BATCH})</label>
 		<input id="files" type="file" accept="image/*" multiple disabled={frozen} onchange={(e) => pickFiles(e.currentTarget.files)} />
 	</div>
+	<label class="button camera" class:disabled={frozen}>
+		Снимай сега
+		<input
+			type="file"
+			accept="image/*"
+			capture="environment"
+			disabled={frozen}
+			onchange={(e) => {
+				const input = e.currentTarget;
+				addPicture(input.files);
+				input.value = '';
+			}}
+		/>
+	</label>
 {/key}
 {#if tooMany}<p class="field-error">Най-много {MAX_FILES_PER_BATCH} снимки наведнъж; останалите са пропуснати.</p>{/if}
 {#if duplicates > 0}<p class="muted">Повтарящи се снимки, махнати от избора: {duplicates}.</p>{/if}
@@ -182,6 +203,10 @@
 	.picker { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
 	.picker label { font-weight: 500; font-size: var(--text-sm); color: var(--muted); }
 	.picker input { min-height: 44px; }
+	.camera { position: relative; overflow: hidden; align-self: flex-start; margin-bottom: var(--space-3); min-height: 44px; }
+	.camera:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+	.camera input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+	.camera.disabled { opacity: 0.5; }
 	.confirm { margin: var(--space-3) 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 	.confirm p { margin: 0; }
 	.cards { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }

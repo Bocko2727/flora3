@@ -52,3 +52,8 @@ export function buildDrafts(
 export function requestCount(drafts: Draft[]): number {
 	return drafts.filter((draft) => draft.files.length > 0).length;
 }
+
+/** Camera pictures arrive one at a time: they are added to the choice, never replace it. */
+export function mergeSelection(current: File[], incoming: File[]): File[] {
+	return incoming.length === 0 ? current : [...current, ...incoming];
+}

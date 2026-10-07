@@ -560,6 +560,28 @@ test('upload many: a plant that is already saved is not analysed again', async (
 	await resetCatalog();
 });
 
+test('picture now: camera pictures are added one by one and nothing is sent', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	const camera = page.getByLabel('Снимай сега');
+	await expect(camera).toHaveAttribute('capture', 'environment');
+	await expect(camera).toHaveAttribute('accept', 'image/*');
+	await camera.setInputFiles(fixture('leaf-a.jpg'));
+	await expect(page.getByRole('heading', { name: 'Растение 1' })).toBeVisible();
+	await camera.setInputFiles(fixture('leaf-b.jpg'));
+	await expect(page.getByRole('heading', { name: 'Растение 2' })).toBeVisible();
+	await expect(page.getByText(/Ще се изпратят 2 заявки към Pl@ntNet/)).toBeVisible();
+	expect(calls).toBe(0);
+	await logout(page);
+	await resetCatalog();
+});
+
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
 test.describe('catalog pages of 15 / 30 / 45', () => {

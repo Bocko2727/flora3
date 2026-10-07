@@ -13,7 +13,7 @@
 ## Следващи задачи (по ред)
 1. `feat/species-profile-qa` — профил като въпроси и отговори от `legacy_ai` („AI текст · непроверен“) + лента „Снимки по месеци“ (`docs/prototype/HANDOFF.md` §3.4).
 2. `feat/upload-many` (§3.5) — готово, PR е отворен; чака `test:db`/`integration`/`e2e` и screenshot-и от собственика, после merge.
-3. `feat/picture-now` — камера на момента, същият поток (§3.6).
+3. `feat/picture-now` (§3.6) — готово, PR е отворен (стъпва на PR #25); чака `e2e` и screenshot-и от собственика.
 4. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
 5. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
 6. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.

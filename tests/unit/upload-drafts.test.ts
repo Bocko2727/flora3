@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
-import { buildDrafts, fileKey, requestCount } from '$lib/upload/drafts';
+import { buildDrafts, fileKey, mergeSelection, requestCount } from '$lib/upload/drafts';
 
 const file = (name: string, size = 10, lastModified = 1) =>
 	new File([new Uint8Array(size)], name, { type: 'image/jpeg', lastModified });
@@ -67,5 +67,17 @@ describe('fileKey', () => {
 		expect(fileKey(file('b.jpg', 10, 1))).not.toBe(base);
 		expect(fileKey(file('a.jpg', 11, 1))).not.toBe(base);
 		expect(fileKey(file('a.jpg', 10, 2))).not.toBe(base);
+	});
+});
+
+describe('mergeSelection', () => {
+	it('appends new pictures after the ones already chosen, in order', () => {
+		const out = mergeSelection([file('a.jpg')], [file('b.jpg'), file('c.jpg')]);
+		expect(out.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg', 'c.jpg']);
+	});
+
+	it('keeps the current choice when nothing new arrives (a cancelled camera)', () => {
+		const current = [file('a.jpg')];
+		expect(mergeSelection(current, [])).toEqual(current);
 	});
 });
