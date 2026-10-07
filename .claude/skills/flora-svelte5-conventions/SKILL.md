@@ -53,6 +53,9 @@ description: Как се пише код точно в repo-то на Флора
 - След промяна: най-малкият релевантен тест (hook-ът `related-tests.sh` пуска свързаните unit тестове). Преди PR: `/preflight`.
 - Не отслабвай assertion, не слагай `.skip`.
 
+## Svelte MCP
+Сървърът `svelte` (`.mcp.json`, безплатен, без ключ) е одобрен. При нов или променен `.svelte`/`.svelte.ts` файл: `svelte-autofixer` до чист резултат; при съмнение за API на Svelte 5/SvelteKit — `list-sections` и `get-documentation`. Резултатът му не заменя `npm run check` и тестовете.
+
 ## Не прави
 - Нов пакет (§5.1) — предложи го с причина.
 - Secret или service-role ключ в `src/lib` извън `server/`, в `+page.svelte` или в `$env/static/public`.
