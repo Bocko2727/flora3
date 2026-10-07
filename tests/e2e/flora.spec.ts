@@ -469,9 +469,186 @@ test('viewer does not see the review', async ({ page }) => {
 	await logout(page);
 });
 
+test('image enhancer: the enhanced copy sits beside the original, which stays untouched', async ({ page }) => {
+	await resetCatalog();
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Българско име').fill('Паричка');
+	await page.getByLabel('Латинско име').fill('Bellis perennis');
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg')]);
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
+	const url = new URL(page.url()).pathname;
+	const id = url.split('/').pop()!;
+
+	const admin = adminClient();
+	const row = await admin.from('plant_photos').select('id, path, sha256, bytes').eq('plant_id', id).single();
+	expect(row.data).toBeTruthy();
+	const original = row.data!;
+	const readOriginal = async () => Buffer.from(await (await admin.storage.from('photos').download(original.path)).data!.arrayBuffer());
+	const bytesBefore = await readOriginal();
+	const folder = original.path.slice(0, original.path.lastIndexOf('/'));
+	const enhancedName = `${original.id}_enh.jpg`;
+	const names = async () => ((await admin.storage.from('photos').list(folder)).data ?? []).map((f) => f.name);
+	expect(await names()).not.toContain(enhancedName);
+
+	await gotoSettled(page, `${url}/edit`);
+	await page.getByLabel('Избери за подобряване').check();
+	await page.getByRole('button', { name: 'Подобри избраните (1)' }).click();
+	await expect(page.getByLabel(/Сравни оригинал и подобрено копие/)).toBeVisible({ timeout: 60_000 });
+	expect(await names()).toContain(enhancedName);
+	expect((await readOriginal()).equals(bytesBefore)).toBe(true);
+	const after = await admin.from('plant_photos').select('sha256, bytes').eq('id', original.id).single();
+	expect(after.data).toEqual({ sha256: original.sha256, bytes: original.bytes });
+
+	// The viewer opens on the original and offers the enhanced copy as a display choice.
+	await gotoSettled(page, url);
+	await page.getByRole('button', { name: 'Отвори снимка 1 от 1' }).click();
+	const viewer = page.getByRole('dialog', { name: 'Снимка на цял екран' });
+	await expect(viewer.getByRole('button', { name: 'Оригинал' })).toHaveAttribute('aria-pressed', 'true');
+	await viewer.getByRole('button', { name: 'Подобрено копие' }).click();
+	await expect(viewer.getByRole('img', { name: /подобрено копие/ })).toBeVisible();
+	await page.keyboard.press('Escape');
+
+	// Removing the enhanced copy leaves the original alone.
+	await gotoSettled(page, `${url}/edit`);
+	await page.getByRole('button', { name: 'Махни подобреното' }).click();
+	await expect(page.getByLabel(/Сравни оригинал и подобрено копие/)).toHaveCount(0);
+	expect(await names()).not.toContain(enhancedName);
+	expect((await readOriginal()).equals(bytesBefore)).toBe(true);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: nothing is sent before the click, one request per plant, plants are saved one by one', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: 'Качи растение' }).click();
+	await expect(page.getByRole('heading', { name: 'Качи растение' })).toBeVisible();
+	await page.waitForLoadState('networkidle');
+	await page.getByLabel(/Снимки от устройството/).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	await expect(page.getByRole('heading', { name: 'Растение 1' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Растение 2' })).toBeVisible();
+	await expect(page.getByText(/Ще се изпратят 2 заявки към Pl@ntNet/)).toBeVisible();
+	expect(calls).toBe(0);
+
+	await page.getByRole('button', { name: 'Анализирай (2 заявки)' }).click();
+	await expect(page.getByText('71 %')).toHaveCount(2, { timeout: 30_000 });
+	expect(calls).toBe(2);
+	await expect(page.getByText('Разпознаването използва Pl@ntNet API.').first()).toBeVisible();
+
+	const card = (n: number) => page.getByRole('region', { name: `Растение ${n}` });
+	await card(1).getByRole('button', { name: /Bellis perennis/ }).click();
+	await expect(card(1).getByLabel('Латинско име')).toHaveValue('Bellis perennis');
+	await card(1).getByLabel('Българско име').fill('Паричка');
+	await card(1).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(1).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+
+	// The second plant ignores the suggestions and keeps the owner's own name.
+	await card(2).getByLabel('Българско име').fill('Шипка');
+	await card(2).getByLabel('Латинско име').fill('Rosa canina');
+	await card(2).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(2).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+	expect(calls).toBe(2);
+
+	const admin = adminClient();
+	const plants = await admin.from('plants').select('scientific_name, name_source').order('scientific_name');
+	expect(plants.data).toEqual([
+		{ scientific_name: 'Bellis perennis', name_source: 'ai' },
+		{ scientific_name: 'Rosa canina', name_source: 'manual' }
+	]);
+	const photos = await admin.from('plant_photos').select('*', { count: 'exact', head: true });
+	expect(photos.count).toBe(2);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: the queue stops at the quota and the unsent plants can be analysed one by one', async ({ page }) => {
+	await resetCatalog();
+	const replies = [
+		{ status: 200, body: identifyOk },
+		{ status: 429, body: JSON.stringify({ ok: false, code: 'quota', message: 'Лимитът за разпознаване за днес е изчерпан.' }) }
+	];
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		const reply = replies[calls] ?? replies[1];
+		calls += 1;
+		return route.fulfill({ status: reply.status, contentType: 'application/json', body: reply.body });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	await page
+		.getByLabel(/Снимки от устройството/)
+		.setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg'), fixture('rotated.jpg')]);
+	await expect(page.getByRole('heading', { name: 'Растение 3' })).toBeVisible();
+	await page.getByRole('button', { name: 'Анализирай (3 заявки)' }).click();
+	await expect(page.getByText('Лимитът за разпознаване за днес е изчерпан.')).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('Не е изпратено, защото по-рано заявката спря.')).toBeVisible();
+	// Plant 1 was analysed, plant 2 hit the limit, plant 3 was never sent: two requests, not three.
+	expect(calls).toBe(2);
+	// After a quota stop a single retry would be pointless, so the button is not offered.
+	await expect(page.getByRole('button', { name: 'Анализирай само това (1 заявка)' })).toHaveCount(0);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: a plant that is already saved is not analysed again', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	await page.getByLabel(/Снимки от устройството/).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	const card = (n: number) => page.getByRole('region', { name: `Растение ${n}` });
+	await card(1).getByLabel('Българско име').fill('Шипка');
+	await card(1).getByLabel('Латинско име').fill('Rosa canina');
+	await card(1).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(1).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+
+	await expect(page.getByRole('button', { name: 'Анализирай (1 заявка)' })).toBeVisible();
+	await page.getByRole('button', { name: 'Анализирай (1 заявка)' }).click();
+	await expect(card(2).getByText('71 %')).toBeVisible({ timeout: 30_000 });
+	expect(calls).toBe(1);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('picture now: camera pictures are added one by one and nothing is sent', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	const camera = page.getByLabel('Снимай сега');
+	await expect(camera).toHaveAttribute('capture', 'environment');
+	await expect(camera).toHaveAttribute('accept', 'image/*');
+	await camera.setInputFiles(fixture('leaf-a.jpg'));
+	await expect(page.getByRole('heading', { name: 'Растение 1' })).toBeVisible();
+	await page.getByRole('region', { name: 'Растение 1' }).getByLabel('Българско име').fill('Паричка');
+	await camera.setInputFiles(fixture('leaf-b.jpg'));
+	await expect(page.getByRole('heading', { name: 'Растение 2' })).toBeVisible();
+	// Adding a picture must not wipe what was already typed on the first card.
+	await expect(page.getByRole('region', { name: 'Растение 1' }).getByLabel('Българско име')).toHaveValue('Паричка');
+	await expect(page.getByText(/Ще се изпратят 2 заявки към Pl@ntNet/)).toBeVisible();
+	expect(calls).toBe(0);
+	await logout(page);
+	await resetCatalog();
+});
+
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
-test.describe('catalog pages of 6 / 12', () => {
+test.describe('catalog pages of 15 / 30 / 45', () => {
 	const ids: string[] = [];
 	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
 	const pages = (page: Page) => page.getByRole('navigation', { name: 'Страници' });
@@ -479,7 +656,7 @@ test.describe('catalog pages of 6 / 12', () => {
 	test.beforeAll(async () => {
 		await resetCatalog();
 		const ownerId = await ensureUser(EDITOR, { editor: true });
-		const rows = Array.from({ length: 13 }, (_, i) => {
+		const rows = Array.from({ length: 31 }, (_, i) => {
 			const n = String(i + 1).padStart(2, '0');
 			return { id: randomUUID(), name_bg: `Тест ${n}`, scientific_name: `Testus ${n}`, owner_id: ownerId };
 		});
@@ -493,36 +670,205 @@ test.describe('catalog pages of 6 / 12', () => {
 		if (error) throw error;
 	});
 
-	test('shows 6 or 12 plants per page and keeps the page in the URL', async ({ page }) => {
+	test('shows 15, 30 or 45 plants per page and keeps the page in the URL', async ({ page }) => {
 		await login(page, EDITOR);
-		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(14, 23, 20)');
 
-		await gotoSettled(page, '/?n=6');
-		await expect(cards(page)).toHaveCount(6);
+		await gotoSettled(page, '/');
+		await expect(cards(page)).toHaveCount(15);
+		await expect(pages(page).getByRole('link', { name: '15', exact: true })).toHaveAttribute('aria-current', 'true');
 		await expect(pages(page).getByRole('link', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
 		await expect(pages(page).getByRole('link', { name: '2', exact: true })).not.toHaveAttribute('aria-current');
 
 		await pages(page).getByRole('link', { name: '3', exact: true }).click();
 		await expect(cards(page)).toHaveCount(1);
 		await expect(page).toHaveURL(/[?&]p=3/);
-		await expect(cards(page).first()).toContainText('Тест 13');
+		await expect(cards(page).first()).toContainText('Тест 31');
 
-		await pages(page).getByRole('link', { name: '12', exact: true }).click();
-		await expect(cards(page)).toHaveCount(12);
-		await expect(page).toHaveURL(/[?&]n=12/);
+		await pages(page).getByRole('link', { name: '30', exact: true }).click();
+		await expect(cards(page)).toHaveCount(30);
+		await expect(page).toHaveURL(/[?&]n=30/);
 		await expect(page).not.toHaveURL(/[?&]p=/);
 
-		await pages(page).getByRole('link', { name: '2', exact: true }).click();
+		await pages(page).getByRole('link', { name: '45', exact: true }).click();
+		await expect(cards(page)).toHaveCount(31);
+		await expect(page).toHaveURL(/[?&]n=45/);
+		await expect(pages(page).getByRole('link', { name: '45', exact: true })).toHaveAttribute('aria-current', 'true');
+		await expect(pages(page).getByRole('list')).toHaveCount(0);
+
+		await gotoSettled(page, '/?n=15&p=2');
 		await expect(page).toHaveURL(/[?&]p=2/);
-		await page.getByLabel('Търси').fill('Тест 13');
+		await page.getByLabel('Търси').fill('Тест 31');
 		await expect(page).not.toHaveURL(/[?&]p=/);
 		await expect(page).toHaveURL(/[?&]q=/);
 		await expect(cards(page)).toHaveCount(1);
-		await expect(cards(page).first()).toContainText('Тест 13');
-		await expect(page.getByLabel('Търси')).toHaveValue('Тест 13');
+		await expect(cards(page).first()).toContainText('Тест 31');
+		await expect(page.getByLabel('Търси')).toHaveValue('Тест 31');
 
-		await gotoSettled(page, '/?p=99');
+		// Old links with the former sizes fall back to 15.
+		await gotoSettled(page, '/?n=12&p=99');
+		await expect(pages(page).getByRole('link', { name: '15', exact: true })).toHaveAttribute('aria-current', 'true');
 		await expect(cards(page)).toHaveCount(1);
-		await expect(pages(page).getByRole('link', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
+		await expect(pages(page).getByRole('link', { name: '3', exact: true })).toHaveAttribute('aria-current', 'page');
+	});
+});
+
+// Runs after the paging block; again starts from a clean catalog and removes its plants afterwards.
+test.describe('family index', () => {
+	const ids: string[] = [];
+	const cards = (page: Page) => page.getByRole('list', { name: 'Растения' }).getByRole('listitem');
+	const families = (page: Page) => page.getByRole('list', { name: 'Семейства' }).getByRole('listitem');
+
+	test.beforeAll(async () => {
+		await resetCatalog();
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		const rows = [
+			{ name_bg: 'Лайка', scientific_name: 'Matricaria chamomilla', family: 'Asteraceae (Сложноцветни)' },
+			{ name_bg: 'Глухарче', scientific_name: 'Taraxacum officinale', family: 'Asteraceae (Сложноцветни)' },
+			{ name_bg: 'Равнец', scientific_name: 'Achillea millefolium', family: 'Asteraceae' },
+			{ name_bg: 'Мащерка', scientific_name: 'Thymus serpyllum', family: 'Lamiaceae (Устноцветни)' },
+			{ name_bg: 'Неизвестно', scientific_name: 'Plantae sp.', family: null }
+		].map((row) => ({ ...row, id: randomUUID(), owner_id: ownerId }));
+		const { error } = await adminClient().from('plants').insert(rows);
+		if (error) throw error;
+		ids.push(...rows.map((row) => row.id));
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().in('id', ids);
+		if (error) throw error;
+	});
+
+	test('lists families on one screen and filters the catalog by one', async ({ page }) => {
+		await login(page, EDITOR);
+		await gotoSettled(page, '/');
+		await expect(cards(page)).toHaveCount(5);
+
+		await page.getByRole('link', { name: 'Семейства' }).click();
+		await expect(page).toHaveURL(/[?&]v=fam/);
+		await expect(families(page)).toHaveCount(2);
+		await expect(families(page).first()).toContainText('Asteraceae');
+		await expect(families(page).first()).toContainText('Сложноцветни');
+		await expect(families(page).first()).toContainText('3');
+		await expect(cards(page)).toHaveCount(0);
+
+		await families(page).first().getByRole('link').click();
+		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
+		await expect(page).not.toHaveURL(/[?&]v=fam/);
+		await expect(cards(page)).toHaveCount(3);
+		await expect(page.getByText('Семейство: Asteraceae · Сложноцветни')).toBeVisible();
+
+		await page.getByRole('link', { name: 'Махни филтъра за семейство' }).click();
+		await expect(page).not.toHaveURL(/[?&]f=/);
+		await expect(cards(page)).toHaveCount(5);
+
+		// The family filter works together with search and keeps the page size.
+		// "ка" matches Лайка (Asteraceae) and Мащерка (Lamiaceae); the family filter keeps only Лайка.
+		await gotoSettled(page, '/?q=ка&n=30');
+		await expect(cards(page)).toHaveCount(2);
+		await gotoSettled(page, '/?f=Asteraceae&n=30');
+		await page.getByLabel('Търси').fill('ка');
+		await expect(cards(page)).toHaveCount(1);
+		await expect(cards(page).first()).toContainText('Лайка');
+		await expect(page).toHaveURL(/[?&]f=Asteraceae/);
+		await expect(page).toHaveURL(/[?&]n=30/);
+	});
+});
+
+test.describe('light and dark theme', () => {
+	test('follows the system and switches with the header button, remembered after reload', async ({ browser }) => {
+		const context = await browser.newContext({ colorScheme: 'dark', viewport: { width: 412, height: 915 } });
+		const page = await context.newPage();
+		await login(page, EDITOR);
+		const html = page.locator('html');
+		const toggle = page.getByRole('button', { name: /Светъл режим|Тъмен режим/ });
+
+		// No saved choice: the system dark scheme gives the dark green palette.
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(19, 42, 30)');
+		await expect(toggle).toHaveAccessibleName('Светъл режим');
+
+		await toggle.click();
+		await expect(html).toHaveAttribute('data-theme', 'light');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(237, 242, 234)');
+		await expect(toggle).toHaveAccessibleName('Тъмен режим');
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(html).toHaveAttribute('data-theme', 'light');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(237, 242, 234)');
+
+		await page.getByRole('button', { name: 'Тъмен режим' }).click();
+		await expect(html).toHaveAttribute('data-theme', 'dark');
+		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(19, 42, 30)');
+		await context.close();
+	});
+});
+
+test.describe('species profile as questions and answers', () => {
+	let id = '';
+
+	test.beforeAll(async () => {
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		id = randomUUID();
+		const { error } = await adminClient()
+			.from('plants')
+			.insert({
+				id,
+				owner_id: ownerId,
+				scientific_name: 'Campanula cochleariifolia',
+				name_bg: 'Лъжицолистна камбанка',
+				family: 'Campanulaceae (Камбанкови)',
+				name_source: 'legacy_ai',
+				legacy_ai: {
+					recognition: 'Малко туфесто растение със синьо-виолетови камбанки.',
+					lookalikes: 'Campanula alpina, Campanula rotundifolia.',
+					confidence: 'Потвърдено (AI 85%)'
+				}
+			});
+		if (error) throw error;
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().eq('id', id);
+		if (error) throw error;
+	});
+
+	test('shows the old AI text as unverified answers and the photo months', async ({ page }) => {
+		await login(page, EDITOR);
+		await gotoSettled(page, `/plants/${id}`);
+		const answers = page.getByRole('region', { name: 'Въпроси и отговори' });
+		await expect(answers.getByRole('heading', { name: 'Как да го разпозная?' })).toBeVisible();
+		await expect(answers.getByText('Малко туфесто растение със синьо-виолетови камбанки.')).toBeVisible();
+		await expect(answers.getByRole('heading', { name: 'С какво може да се сбърка?' })).toBeVisible();
+		// Only questions with an answer are shown, and every answer is marked as unverified.
+		await expect(answers.getByRole('heading', { name: 'Къде расте?' })).toHaveCount(0);
+		await expect(answers.getByText('AI текст · непроверен')).toHaveCount(2);
+		// The old "confirmed" score is shown as the old AI's own words, not as a confirmation.
+		await expect(answers.getByText('Старият AI е написал: Потвърдено (AI 85%)')).toBeVisible();
+
+		const months = page.getByRole('region', { name: 'Снимки по месеци' });
+		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
+	});
+
+	test('marks the months the photos were taken in and counts undated photos', async ({ page }) => {
+		const dated = await legacyPlantWithPhoto('Leontopodium nivale', 'leaf-a.jpg');
+		const undated = await legacyPlantWithPhoto('Crocus sp.', 'leaf-b.jpg');
+		const { error } = await adminClient()
+			.from('plant_photos')
+			.update({ taken_at: '2025-07-16T09:33:01Z' })
+			.eq('plant_id', dated);
+		if (error) throw error;
+
+		await login(page, EDITOR);
+		await gotoSettled(page, `/plants/${dated}`);
+		const months = page.getByRole('region', { name: 'Снимки по месеци' });
+		await expect(months.locator('li.on')).toHaveCount(1);
+		await expect(months.getByText('юли: снимано')).toHaveCount(1);
+		await expect(months.getByText('без дата')).toHaveCount(0);
+
+		await gotoSettled(page, `/plants/${undated}`);
+		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
+		await expect(months.getByText('1 от 1 снимки са без дата и не се броят.')).toBeVisible();
+
+		await adminClient().from('plants').delete().in('id', [dated, undated]);
 	});
 });

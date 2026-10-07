@@ -4,7 +4,16 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
-		<meta name="theme-color" content="#0e1714" />
+		<meta name="theme-color" content="#132a1e" />
+		<script>
+			// Apply a saved light/dark choice before the first paint; without one the system setting decides.
+			try {
+				var t = localStorage.getItem('flora-theme');
+				if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+				var light = t ? t === 'light' : matchMedia('(prefers-color-scheme: light)').matches;
+				if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#edf2ea');
+			} catch (e) {}
+		</script>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link

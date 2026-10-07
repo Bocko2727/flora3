@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Evidence from '$lib/components/Evidence.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
+	import LegacyAiPanel from '$lib/components/LegacyAiPanel.svelte';
+	import PhotoMonths from '$lib/components/PhotoMonths.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import { LEGACY_AI_FIELDS, LEGACY_AI_LABELS } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -20,7 +21,6 @@
 		!primary ? null : heroStage === 0 ? (primary.url ?? primary.thumbUrl) : heroStage === 1 ? primary.thumbUrl : null
 	);
 
-	const legacyFields = $derived(data.legacy ? LEGACY_AI_FIELDS.filter((field) => data.legacy?.[field]) : []);
 	const facts = $derived(
 		[
 			{ label: 'Българско име', value: plant.name_bg },
@@ -129,16 +129,9 @@
 				{/each}
 			</dl>
 
-			{#if legacyFields.length > 0 && data.legacy}
-				<h2>Допълнително</h2>
-				<dl class="facts">
-					{#each legacyFields as field (field)}
-						<dt>{LEGACY_AI_LABELS[field]}</dt>
-						<dd class="prose">{data.legacy[field]}</dd>
-					{/each}
-				</dl>
-				<p class="muted source">Източник: стар AI текст, не е проверен от човек.</p>
-			{/if}
+			<PhotoMonths months={data.months} total={data.photos.length} dated={data.datedPhotos} />
+
+			<LegacyAiPanel legacy={data.legacy} />
 		</div>
 
 		<div role="tabpanel" id="panel-evidence" aria-labelledby="tab-evidence" class="panel" hidden={tab !== 'evidence'}>
@@ -205,7 +198,6 @@
 	.panel { background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); padding: var(--space-4); }
 	.panel[hidden] { display: none; }
 	.panel :global(.evidence) { margin-top: var(--space-3); }
-	.panel h2 { margin-top: var(--space-5); }
 
 	.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; font-size: var(--text-sm); }
 	.facts dt { color: var(--muted); }
