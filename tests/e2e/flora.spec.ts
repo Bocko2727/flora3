@@ -140,6 +140,7 @@ test('editor edits the plant, changes the primary photo and sees the draft statu
 	await page.getByRole('button', { name: 'Запази', exact: true }).click();
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
 	await expect(page.getByText('Розетка от лъжичести листа.')).toBeVisible();
+	await openEvidence(page);
 	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Потвърди', exact: true })).toHaveCount(0);
 	await gotoSettled(page, '/');
@@ -192,6 +193,7 @@ test('viewer can read but cannot change anything', async ({ page }) => {
 
 	await gotoSettled(page, plantUrl);
 	await expect(page.getByRole('heading', { name: 'Обикновена паричка' })).toBeVisible();
+	await openEvidence(page);
 	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 	const stored = await adminClient().from('plants').select('name_bg, name_source').eq('id', plantId()).single();
 	expect(stored.data).toEqual({ name_bg: 'Обикновена паричка', name_source: 'manual' });
@@ -343,6 +345,7 @@ test('a missing AI configuration is explained and the plant still saves', async 
 	await page.getByLabel('Латинско име').fill('Leucanthemum vulgare');
 	await page.getByRole('button', { name: 'Запази растението' }).click();
 	await expect(page.getByRole('heading', { name: 'Маргаритка' })).toBeVisible({ timeout: 30_000 });
+	await openEvidence(page);
 	await expect(page.getByText('Чернова', { exact: true }).first()).toBeVisible();
 
 	const id = new URL(page.url()).pathname.split('/').pop()!;
