@@ -21,10 +21,10 @@
 
 ## Чака решение от собственика
 - Двете гъби в `/review` (кратко одобрение).
-- Playwright MCP (пълно одобрение). Svelte MCP е одобрен 07.10.2026 и е в PR `chore/tooling-mcp-gitleaks-dependabot`.
+- Playwright MCP (пълно одобрение).
 - Docker за локален Supabase на служебната машина (пълно одобрение).
 - Изтриване на влетите клонове в GitHub (сам; или „Automatically delete head branches“ в настройките).
-- Dependabot alerts в настройките на repo-то (`dependabot.yml` е в същия PR; alerts се включват ръчно).
+- Dependabot alerts в настройките на repo-то (ръчно; `dependabot.yml` вече е в `main`).
 
 ## Отложено (не се повдига, докато собственикът не каже)
 - Махане на `NEW_SUPABASE_SECRET_KEY` и `import-legacy.yml`.
