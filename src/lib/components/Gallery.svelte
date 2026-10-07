@@ -95,8 +95,7 @@
 	.viewer::backdrop { background: #000; }
 	.viewer img { width: 100%; height: calc(100dvh - 64px - env(safe-area-inset-bottom)); object-fit: contain; }
 	.controls { box-sizing: content-box; height: 64px; font-variant-numeric: tabular-nums; padding-bottom: env(safe-area-inset-bottom); display: flex; align-items: center; justify-content: center; gap: 1rem; }
-	.controls { flex-wrap: wrap; }
 	.controls button { background: #222; color: #fff; border-color: #444; }
-	.versions { display: flex; gap: 0.25rem; }
+	.versions { position: absolute; top: calc(0.5rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 0.25rem; z-index: 1; }
 	.versions button[aria-pressed='true'] { border-color: #fff; outline: 2px solid #fff; font-weight: 600; }
 </style>

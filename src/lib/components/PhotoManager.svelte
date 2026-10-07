@@ -53,7 +53,8 @@
 		message = '';
 		progress = {};
 		let failed = 0;
-		for (const photo of selectedPhotos) {
+		const chosen = [...selectedPhotos];
+		for (const photo of chosen) {
 			progress[photo.id] = 'run';
 			try {
 				const response = await fetch(photo.url!);
@@ -69,7 +70,7 @@
 		}
 		selected = {};
 		enhancing = false;
-		if (failed > 0) message = `Не успяха ${failed} от ${selectedPhotos.length}. Оригиналите са непокътнати.`;
+		if (failed > 0) message = `Не успяха ${failed} от ${chosen.length}. Оригиналите са непокътнати.`;
 		await invalidateAll();
 	}
 </script>

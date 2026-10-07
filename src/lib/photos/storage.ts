@@ -30,7 +30,7 @@ export function enhancedPath(originalPath: string): string {
 export async function saveEnhanced(db: Db, originalPath: string, blob: Blob): Promise<void> {
 	const { error } = await db.storage
 		.from(BUCKET)
-		.upload(enhancedPath(originalPath), blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
+		.upload(enhancedPath(originalPath), blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' });
 	if (error) throw new UserFacingError('Подобреното копие не можа да се запише. Оригиналът е непокътнат.', error);
 }
 
