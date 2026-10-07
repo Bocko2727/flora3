@@ -21,8 +21,8 @@ jobs:
       PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
       FLORA_OFFLINE_EXTERNAL: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -30,3 +30,21 @@ jobs:
       - run: npm run check
       - run: npm run test:unit
       - run: npm run build
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Директно CLI (MIT), без gitleaks-action — той иска лиценз за организации.
+      - name: gitleaks (само диапазонът на PR-а)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          if [ -n "$BASE_SHA" ]; then RANGE="--log-opts=${BASE_SHA}..${HEAD_SHA}"; else RANGE=""; fi
+          ./gitleaks git --redact --no-banner --verbose $RANGE .

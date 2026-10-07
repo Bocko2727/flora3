@@ -29,9 +29,9 @@ jobs:
       NEW_SUPABASE_URL: https://lfmkjxcaokndltdylama.supabase.co
       OWNER_USER_ID: 5135dc97-a09c-47b0-a7fc-4f5a6fd20912
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -59,7 +59,7 @@ jobs:
           if [ "${{ inputs.mode }}" = apply ]; then args="$args --apply"; fi
           npm run import:legacy -- $args
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: import-report-${{ inputs.mode }}

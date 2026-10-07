@@ -2,7 +2,7 @@
 
 Личен ботанически каталог: SvelteKit 2 + Supabase (Postgres, Auth, Storage), хостинг на Vercel. Собственикът добавя и редактира растения и снимки; поканените зрители само разглеждат.
 
-Дизайн: `docs/superpowers/specs/2026-10-01-flora3-design.md` (v1), `docs/superpowers/specs/2026-10-02-flora3-ai-statuses-redesign-design.md` (AI предложение, статуси, тъмна визия) · Планове: `docs/superpowers/plans/`
+Архитектура: `docs/superpowers/specs/2026-10-01-flora3-design.md` (v1), `docs/superpowers/specs/2026-10-02-flora3-ai-statuses-redesign-design.md` (AI предложение и статуси) · Визия „Хербарий“ и следващи екрани: `docs/prototype/HANDOFF.md` · Текущо състояние: `.10x/status.md`
 
 ## Локална разработка
 
