@@ -12,10 +12,4 @@
 Следващ: <роля и защо>
 ```
 
-## 2026-10-06 · оркестратор (claude.ai) · chore/docs-refresh
-Статус: DONE (чака merge от собственика)
-Резултат: документите показват само текущото състояние и предстоящото; правило в `CLAUDE.md` при смяна на решение да се обновяват всички засегнати файлове в същата задача.
-Променени файлове: `.10x/status.md`, `.10x/handoff.md`, `.10x/specs/README.md`, `CLAUDE.md`, `README.md`, `docs/prototype/HANDOFF.md`; изтрити `docs/STATUS-2026-10-02.md`, `docs/superpowers/plans/`, `.10x/decisions/`, `.10x/reviews/`.
-Доказателства: факти, проверени с четене на 06.10: `main` = production = `f2c53aa`, Supabase 98 растения / 118 снимки, PR #1–#14 влети.
-Рискове / несигурност: няма; само Markdown.
-Следващ: собственикът merge-ва; после `feat/species-profile-qa`.
+(Няма отворени отчети.)
