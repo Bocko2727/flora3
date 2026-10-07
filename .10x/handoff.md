@@ -12,10 +12,10 @@
 Следващ: <роля и защо>
 ```
 
-## 2026-10-06 · developer (claude.ai сесия) · 3.4 feat/species-profile-qa
-Статус: DONE
-Резултат: профилът показва `legacy_ai` като „Въпроси и отговори“ (само попълнените въпроси, всеки с етикет „AI текст · непроверен“, предупреждението остава; старата оценка като „Старият AI е написал: …“) и лента „Снимки по месеци“ от `plant_photos.taken_at` (снимките без дата се отчитат). Данните не се променят.
-Променени файлове: src/lib/catalog/months.ts (нов), src/lib/types.ts, src/lib/components/LegacyAiPanel.svelte, src/lib/components/PhotoMonths.svelte (нов), src/routes/plants/[id]/+page.server.ts, src/routes/plants/[id]/+page.svelte, tests/unit/profile.test.ts (нов), tests/e2e/flora.spec.ts
-Доказателства: test:db PASS · unit 186/186 · integration 59/59 · e2e 22/22 · check 0 · build OK · screenshot-и 360/1280 в двата режима (празна и попълнена лента). Ревизор: CHANGES → поправени (не само цвят, брой без дата, e2e с дати, йерархия на заглавията).
-Рискове / несигурност: старият AI текст вече е отворен (не сгънат) — съзнателно по HANDOFF, с предупреждение и етикет на всеки отговор.
-Следващ: собственикът merge-ва; после 3.5 (качване на няколко растения).
+## 2026-10-07 · developer (claude.ai сесия) · 3.5 feat/upload-many
+Статус: DONE (чака e2e, db и integration от собственика — тук няма Docker)
+Резултат: страница `/plants/upload` („Качи растение“): режим „всяка снимка е отделно растение“ / „всички са едно“; най-много 10 файла, дубликатите се махат; изрично „Анализирай (N заявки)“ — нула заявки до клика; една заявка на растение, последователно; спира при quota/forbidden/not_configured/upstream; без авто-повторение; запис по карта само с клик през `/plants/new` и `PhotoUploader`; подсказка при същото латинско име (не блокира). След първия анализ или запис изборът се замразява (без загуба на платени резултати).
+Променени файлове: src/lib/upload/{drafts,queue,names}.ts (нови), src/lib/components/UploadDraftCard.svelte (нов), src/routes/plants/upload/+page.{svelte,server.ts} (нови), src/routes/+page.svelte (връзка), tests/unit/upload-{drafts,queue,names}.test.ts (нови), tests/e2e/flora.spec.ts (3 нови теста)
+Доказателства: check 0 грешки · unit 205/205 · build OK · e2e, test:db, integration НЕ са пускани. Ревизор (отделен агент): CHANGES → поправени запазено растение в опашката, прекъснато качване при „Качи още“, загуба на платен анализ при смяна на режима, подсказка за дубликат между карти, чисто създаване на object URL, безсмислен бутон след квота, подвеждащ текст.
+Рискове / несигурност: e2e са написани по образец и не са изпълнявани; няма screenshot-и при 360/1280 (няма сесия със Supabase тук). Квотата се харчи преди отговора на Pl@ntNet — неуспешна заявка също се брои. Няма RPC за остатъка (не е добавен — иска миграция).
+Следващ: собственикът пуска `db:reset` → `test:db` → `test:unit` → `test:integration` → `test:e2e` → `check` → `build` и прави screenshot-и; после merge.
