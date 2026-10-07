@@ -72,6 +72,7 @@
 			{#if data.review && data.review.toPrepare + data.review.toDecide > 0}
 				<a class="button" href="/review">За преглед{data.review.toDecide > 0 ? ` (${data.review.toDecide})` : ''}</a>
 			{/if}
+			<a class="button" href="/plants/upload">Качи растение</a>
 			<a class="button primary" href="/plants/new">+ Растение</a>
 		</div>
 	{/if}
