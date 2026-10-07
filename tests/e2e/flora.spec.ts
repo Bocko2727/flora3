@@ -510,6 +510,107 @@ test('image enhancer: the enhanced copy sits beside the original, which stays un
 	await resetCatalog();
 });
 
+test('upload many: nothing is sent before the click, one request per plant, plants are saved one by one', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: 'Качи растение' }).click();
+	await expect(page.getByRole('heading', { name: 'Качи растение' })).toBeVisible();
+	await page.waitForLoadState('networkidle');
+	await page.getByLabel(/Снимки от устройството/).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	await expect(page.getByRole('heading', { name: 'Растение 1' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Растение 2' })).toBeVisible();
+	await expect(page.getByText(/Ще се изпратят 2 заявки към Pl@ntNet/)).toBeVisible();
+	expect(calls).toBe(0);
+
+	await page.getByRole('button', { name: 'Анализирай (2 заявки)' }).click();
+	await expect(page.getByText('71 %')).toHaveCount(2, { timeout: 30_000 });
+	expect(calls).toBe(2);
+	await expect(page.getByText('Разпознаването използва Pl@ntNet API.').first()).toBeVisible();
+
+	const card = (n: number) => page.getByRole('region', { name: `Растение ${n}` });
+	await card(1).getByRole('button', { name: /Bellis perennis/ }).click();
+	await expect(card(1).getByLabel('Латинско име')).toHaveValue('Bellis perennis');
+	await card(1).getByLabel('Българско име').fill('Паричка');
+	await card(1).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(1).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+
+	// The second plant ignores the suggestions and keeps the owner's own name.
+	await card(2).getByLabel('Българско име').fill('Шипка');
+	await card(2).getByLabel('Латинско име').fill('Rosa canina');
+	await card(2).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(2).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+	expect(calls).toBe(2);
+
+	const admin = adminClient();
+	const plants = await admin.from('plants').select('scientific_name, name_source').order('scientific_name');
+	expect(plants.data).toEqual([
+		{ scientific_name: 'Bellis perennis', name_source: 'ai' },
+		{ scientific_name: 'Rosa canina', name_source: 'manual' }
+	]);
+	const photos = await admin.from('plant_photos').select('*', { count: 'exact', head: true });
+	expect(photos.count).toBe(2);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: the queue stops at the quota and the unsent plants can be analysed one by one', async ({ page }) => {
+	await resetCatalog();
+	const replies = [
+		{ status: 200, body: identifyOk },
+		{ status: 429, body: JSON.stringify({ ok: false, code: 'quota', message: 'Лимитът за разпознаване за днес е изчерпан.' }) }
+	];
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		const reply = replies[calls] ?? replies[1];
+		calls += 1;
+		return route.fulfill({ status: reply.status, contentType: 'application/json', body: reply.body });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	await page
+		.getByLabel(/Снимки от устройството/)
+		.setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg'), fixture('rotated.jpg')]);
+	await expect(page.getByRole('heading', { name: 'Растение 3' })).toBeVisible();
+	await page.getByRole('button', { name: 'Анализирай (3 заявки)' }).click();
+	await expect(page.getByText('Лимитът за разпознаване за днес е изчерпан.')).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText('Не е изпратено, защото по-рано заявката спря.')).toBeVisible();
+	// Plant 1 was analysed, plant 2 hit the limit, plant 3 was never sent: two requests, not three.
+	expect(calls).toBe(2);
+	// After a quota stop a single retry would be pointless, so the button is not offered.
+	await expect(page.getByRole('button', { name: 'Анализирай само това (1 заявка)' })).toHaveCount(0);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: a plant that is already saved is not analysed again', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	await page.getByLabel(/Снимки от устройството/).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	const card = (n: number) => page.getByRole('region', { name: `Растение ${n}` });
+	await card(1).getByLabel('Българско име').fill('Шипка');
+	await card(1).getByLabel('Латинско име').fill('Rosa canina');
+	await card(1).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(1).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+
+	await expect(page.getByRole('button', { name: 'Анализирай (1 заявка)' })).toBeVisible();
+	await page.getByRole('button', { name: 'Анализирай (1 заявка)' }).click();
+	await expect(card(2).getByText('71 %')).toBeVisible({ timeout: 30_000 });
+	expect(calls).toBe(1);
+	await logout(page);
+	await resetCatalog();
+});
+
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
 test.describe('catalog pages of 15 / 30 / 45', () => {
