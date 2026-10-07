@@ -6,7 +6,7 @@
 
 ## Локална разработка
 
-Изисквания: Node 22, Docker.
+Изисквания: Node 22.x, Docker.
 
 ```bash
 npm install
@@ -28,10 +28,12 @@ npm run dev          # http://localhost:5174
 | `npm run test:e2e` | Playwright на мобилен екран: вход, качване, AI панел (подменен), каталог 6/12, галерия, редакция, права на зрителя. Сървърът върви с `FLORA_OFFLINE_EXTERNAL=1`, така че тестовете не стигат до външни API |
 | `npm run check` | типове и Svelte |
 
+CI (`.github/workflows/ci.yml`) върви на всеки PR: `fast` (`check`, `test:unit`, `build`), после `db-e2e` (локален Supabase на runner-а: `db:reset`, `test:db`, `test:integration`, `test:e2e`) и `secrets-scan` (gitleaks). Node е закрепен на `22.x`. Преди PR локално върви целият набор: `db:reset` → `test:db` → `test:unit` → `test:integration` → `test:e2e` → `check` → `build`.
+
 ## Пускане в употреба (всяка стъпка изисква твоето одобрение)
 
 1. **GitHub:** създай repo-то като **private** преди първия push — кодът и artifact-ите на backup-а не трябва да са публични.
-2. **Supabase:** нов проект `flora3` (Free, eu-central-1). `npx supabase login`, след това `npx supabase link --project-ref <ref>` (иска паролата на базата) и `npx supabase db push`. Провери, че bucket-ът е частен: `select public from storage.buckets where id = 'photos';` → `false`.
+2. **Supabase:** нов проект `flora3` (Free, eu-central-1). Миграциите от `supabase/migrations/` се прилагат по ред през `apply_migration` или в SQL Editor, всяка с отделно одобрение. **Не ползвай `supabase db push` към хоста:** версиите в `supabase_migrations` не съвпадат с имената на файловете. Провери, че bucket-ът е частен: `select public from storage.buckets where id = 'photos';` → `false`.
 3. **Auth:** Authentication → Sign In / Providers. Доставчикът **Email** остава **включен** — изключваш само „Allow new users to sign up“ и „Allow anonymous sign-ins“. Ако изключиш самия Email provider, спира входът за всички. Препоръчително: „Minimum password length“ → 12.
 4. **Потребители:** Authentication → Users → Add user → Create new user (с „Auto Confirm User“) за теб и за зрителя. После в SQL Editor:
    `insert into public.editors (user_id) select id from auth.users where email = 'ТВОЯТ_ИМЕЙЛ';`
