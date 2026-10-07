@@ -33,6 +33,17 @@ export const LEGACY_AI_LABELS: Record<LegacyAiField, string> = {
 	fun_fact: 'Любопитен факт'
 };
 
+/** The old AI text is shown as answers to these questions; each answer stays marked as unverified. */
+export const LEGACY_AI_QUESTIONS: Record<LegacyAiField, string> = {
+	recognition: 'Как да го разпозная?',
+	habitat: 'Къде расте?',
+	lookalikes: 'С какво може да се сбърка?',
+	benefits: 'Каква е ползата и ролята му в природата?',
+	risks: 'Има ли рискове?',
+	uses: 'За какво се използва?',
+	fun_fact: 'Любопитен факт'
+};
+
 export function parseLegacyAi(value: unknown): LegacyAi | null {
 	if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
 	const source = value as Record<string, unknown>;

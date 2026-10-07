@@ -615,3 +615,73 @@ test.describe('light and dark theme', () => {
 		await context.close();
 	});
 });
+
+test.describe('species profile as questions and answers', () => {
+	let id = '';
+
+	test.beforeAll(async () => {
+		const ownerId = await ensureUser(EDITOR, { editor: true });
+		id = randomUUID();
+		const { error } = await adminClient()
+			.from('plants')
+			.insert({
+				id,
+				owner_id: ownerId,
+				scientific_name: 'Campanula cochleariifolia',
+				name_bg: 'Лъжицолистна камбанка',
+				family: 'Campanulaceae (Камбанкови)',
+				name_source: 'legacy_ai',
+				legacy_ai: {
+					recognition: 'Малко туфесто растение със синьо-виолетови камбанки.',
+					lookalikes: 'Campanula alpina, Campanula rotundifolia.',
+					confidence: 'Потвърдено (AI 85%)'
+				}
+			});
+		if (error) throw error;
+	});
+
+	test.afterAll(async () => {
+		const { error } = await adminClient().from('plants').delete().eq('id', id);
+		if (error) throw error;
+	});
+
+	test('shows the old AI text as unverified answers and the photo months', async ({ page }) => {
+		await login(page, EDITOR);
+		await gotoSettled(page, `/plants/${id}`);
+		const answers = page.getByRole('region', { name: 'Въпроси и отговори' });
+		await expect(answers.getByRole('heading', { name: 'Как да го разпозная?' })).toBeVisible();
+		await expect(answers.getByText('Малко туфесто растение със синьо-виолетови камбанки.')).toBeVisible();
+		await expect(answers.getByRole('heading', { name: 'С какво може да се сбърка?' })).toBeVisible();
+		// Only questions with an answer are shown, and every answer is marked as unverified.
+		await expect(answers.getByRole('heading', { name: 'Къде расте?' })).toHaveCount(0);
+		await expect(answers.getByText('AI текст · непроверен')).toHaveCount(2);
+		// The old "confirmed" score is shown as the old AI's own words, not as a confirmation.
+		await expect(answers.getByText('Старият AI е написал: Потвърдено (AI 85%)')).toBeVisible();
+
+		const months = page.getByRole('region', { name: 'Снимки по месеци' });
+		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
+	});
+
+	test('marks the months the photos were taken in and counts undated photos', async ({ page }) => {
+		const dated = await legacyPlantWithPhoto('Leontopodium nivale', 'leaf-a.jpg');
+		const undated = await legacyPlantWithPhoto('Crocus sp.', 'leaf-b.jpg');
+		const { error } = await adminClient()
+			.from('plant_photos')
+			.update({ taken_at: '2025-07-16T09:33:01Z' })
+			.eq('plant_id', dated);
+		if (error) throw error;
+
+		await login(page, EDITOR);
+		await gotoSettled(page, `/plants/${dated}`);
+		const months = page.getByRole('region', { name: 'Снимки по месеци' });
+		await expect(months.locator('li.on')).toHaveCount(1);
+		await expect(months.getByText('юли: снимано')).toHaveCount(1);
+		await expect(months.getByText('без дата')).toHaveCount(0);
+
+		await gotoSettled(page, `/plants/${undated}`);
+		await expect(months.getByText('Още няма снимки с дата.')).toBeVisible();
+		await expect(months.getByText('1 от 1 снимки са без дата и не се броят.')).toBeVisible();
+
+		await adminClient().from('plants').delete().in('id', [dated, undated]);
+	});
+});

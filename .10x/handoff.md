@@ -12,4 +12,10 @@
 Следващ: <роля и защо>
 ```
 
-(Няма отворени отчети.)
+## 2026-10-06 · developer (claude.ai сесия) · 3.4 feat/species-profile-qa
+Статус: DONE
+Резултат: профилът показва `legacy_ai` като „Въпроси и отговори“ (само попълнените въпроси, всеки с етикет „AI текст · непроверен“, предупреждението остава; старата оценка като „Старият AI е написал: …“) и лента „Снимки по месеци“ от `plant_photos.taken_at` (снимките без дата се отчитат). Данните не се променят.
+Променени файлове: src/lib/catalog/months.ts (нов), src/lib/types.ts, src/lib/components/LegacyAiPanel.svelte, src/lib/components/PhotoMonths.svelte (нов), src/routes/plants/[id]/+page.server.ts, src/routes/plants/[id]/+page.svelte, tests/unit/profile.test.ts (нов), tests/e2e/flora.spec.ts
+Доказателства: test:db PASS · unit 186/186 · integration 59/59 · e2e 22/22 · check 0 · build OK · screenshot-и 360/1280 в двата режима (празна и попълнена лента). Ревизор: CHANGES → поправени (не само цвят, брой без дата, e2e с дати, йерархия на заглавията).
+Рискове / несигурност: старият AI текст вече е отворен (не сгънат) — съзнателно по HANDOFF, с предупреждение и етикет на всеки отговор.
+Следващ: собственикът merge-ва; после 3.5 (качване на няколко растения).

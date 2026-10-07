@@ -12,7 +12,7 @@
 - Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
 
 ## Следващи задачи (по ред)
-1. `feat/species-profile-qa` — профил като въпроси и отговори от `legacy_ai` („AI текст · непроверен“) + лента „Снимки по месеци“ (`docs/prototype/HANDOFF.md` §3.4).
+1. `feat/species-profile-qa` (§3.4) — готово, PR #24 е отворен и чака ревю и merge от собственика.
 2. `feat/upload-many` — „Качи растение“ за няколко растения; една заявка към Pl@ntNet на растение (§3.5).
 3. `feat/picture-now` — камера на момента, същият поток (§3.6).
 4. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
