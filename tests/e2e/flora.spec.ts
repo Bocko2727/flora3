@@ -241,6 +241,7 @@ test('AI suggestions fill the name when adding a plant and are stored with the p
 	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
 	aiPlantUrl = new URL(page.url()).pathname;
 	// e2e runs with FLORA_OFFLINE_EXTERNAL=1, so GBIF cannot confirm the name: AI draft, not AI + GBIF.
+	await openEvidence(page);
 	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
 
 	const id = aiPlantUrl.split('/').pop()!;
@@ -265,6 +266,7 @@ test('AI suggestions can be requested from the saved photos when editing', async
 	await expect(page.getByLabel('Латинско име')).toHaveValue('Bellis sylvestris');
 	await page.getByRole('button', { name: 'Запази', exact: true }).click();
 	await expect(page.getByText('Bellis sylvestris').first()).toBeVisible();
+	await openEvidence(page);
 	await expect(page.getByText('AI чернова', { exact: true }).first()).toBeVisible();
 
 	const id = aiPlantUrl.split('/').pop()!;
