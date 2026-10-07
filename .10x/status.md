@@ -12,12 +12,10 @@
 - Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
 
 ## Следващи задачи (по ред)
-1. `feat/upload-many` (§3.5) — готово, PR е отворен; чака `test:db`/`integration`/`e2e` и screenshot-и от собственика, после merge.
-2. `feat/picture-now` (§3.6) — готово, PR е отворен (стъпва на PR #25); чака `e2e` и screenshot-и от собственика.
-3. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
-4. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
-5. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.
-6. P3: `feat/image-enhancer` (§3.7; производно копие, оригиналът не се пипа).
+1. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
+2. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
+3. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.
+4. P3: `feat/image-enhancer` (§3.7) — готово, PR е отворен; без миграция (подобреното копие е файл `_enh.jpg`). Чака `test:db`/`integration`/`e2e` и screenshot-и от собственика.
 
 ## Чака решение от собственика
 - Двете гъби в `/review` (кратко одобрение).

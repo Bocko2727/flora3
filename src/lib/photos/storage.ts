@@ -16,6 +16,30 @@ export function photoPaths(ownerId: string, plantId: string, photoId: string, mi
 	return { path: `${base}.${ext}`, thumbPath: `${base}_thumb.${ext}` };
 }
 
+const ORIGINAL_PATH = /^[^/]+\/[^/]+\/[0-9a-fA-F-]+\.(webp|jpg)$/;
+
+/**
+ * Where the enhanced (display-only) copy of a photo lives: next to the original, under its own key.
+ * It is never the original's `path` or `thumb_path`, so enhancing can not overwrite the original.
+ */
+export function enhancedPath(originalPath: string): string {
+	if (!ORIGINAL_PATH.test(originalPath)) throw new Error(`Not an original photo path: ${originalPath}`);
+	return originalPath.replace(/\.(webp|jpg)$/, '_enh.jpg');
+}
+
+export async function saveEnhanced(db: Db, originalPath: string, blob: Blob): Promise<void> {
+	const { error } = await db.storage
+		.from(BUCKET)
+		.upload(enhancedPath(originalPath), blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' });
+	if (error) throw new UserFacingError('Подобреното копие не можа да се запише. Оригиналът е непокътнат.', error);
+}
+
+export async function removeEnhanced(db: Db, originalPaths: string[]): Promise<void> {
+	if (originalPaths.length === 0) return;
+	const { error } = await db.storage.from(BUCKET).remove(originalPaths.map(enhancedPath));
+	if (error) throw new UserFacingError('Подобреното копие не можа да се махне.', error);
+}
+
 export async function findPhotoBySha(db: Db, sha256: string): Promise<{ id: string; plant_id: string } | null> {
 	const { data, error } = await db.from('plant_photos').select('id, plant_id').eq('sha256', sha256).maybeSingle();
 	if (error) throw new UserFacingError('Снимката не можа да се провери.', error);
@@ -88,7 +112,7 @@ export async function deletePhoto(db: Db, photo: { id: string; path: string; thu
 	if (error) throw new UserFacingError(describeDbError(error, 'Снимката не можа да се изтрие.'), error);
 	if (data.length === 0) throw new UserFacingError('Снимката не е намерена или нямаш права да я изтриеш.');
 	const { path, thumb_path } = data[0];
-	await removeFiles(db, [path, thumb_path]);
+	await removeFiles(db, [path, thumb_path, enhancedPath(path)]);
 }
 
 export async function setPrimaryPhoto(db: Db, photoId: string): Promise<void> {

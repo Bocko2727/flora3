@@ -1,8 +1,10 @@
 import { error, fail } from '@sveltejs/kit';
 import { UserFacingError } from '$lib/errors';
 import { requireEditor } from '$lib/server/auth';
+import { findEnhanced } from '$lib/server/enhanced';
 import { externalFetch } from '$lib/server/external/fetch';
 import { toHttpError } from '$lib/server/http';
+import { enhancedPath } from '$lib/photos/storage';
 import { getPlant } from '$lib/server/plants';
 import { signPaths } from '$lib/server/signed-urls';
 import { isNameSource } from '$lib/status';
@@ -14,9 +16,14 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const plant = await getPlant(locals.supabase, params.id).catch(toHttpError);
 	if (!plant) error(404, 'Растението не е намерено.');
+	const enhanced = await findEnhanced(locals.supabase, plant.photos.map((photo) => photo.path));
 	const urls = await signPaths(
 		locals.supabase,
-		plant.photos.flatMap((photo) => [photo.path, photo.thumb_path])
+		plant.photos.flatMap((photo) => [
+			photo.path,
+			photo.thumb_path,
+			...(enhanced.has(photo.path) ? [enhancedPath(photo.path)] : [])
+		])
 	).catch(toHttpError);
 	const { photos, legacy_ai, latestIdentification, ...fields } = plant;
 	return {
@@ -49,6 +56,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			id: photo.id,
 			url: urls.get(photo.path) ?? null,
 			thumbUrl: urls.get(photo.thumb_path) ?? null,
+			enhancedUrl: enhanced.has(photo.path) ? (urls.get(enhancedPath(photo.path)) ?? null) : null,
 			width: photo.width,
 			height: photo.height,
 			isPrimary: photo.is_primary

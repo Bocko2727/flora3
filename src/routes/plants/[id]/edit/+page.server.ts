@@ -4,7 +4,9 @@ import { deriveNameSource, parseIdentificationField, sameName } from '$lib/ident
 import { parsePlantForm, plantToFormValues } from '$lib/schemas/plant';
 import { requireEditor } from '$lib/server/auth';
 import { toHttpError } from '$lib/server/http';
+import { findEnhanced } from '$lib/server/enhanced';
 import { externalFetch } from '$lib/server/external/fetch';
+import { enhancedPath } from '$lib/photos/storage';
 import { deletePlant, getPlant, insertIdentification, updatePlant } from '$lib/server/plants';
 import { signPaths } from '$lib/server/signed-urls';
 import { isNameSource } from '$lib/status';
@@ -16,9 +18,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	await requireEditor(locals);
 	const plant = await getPlant(locals.supabase, params.id).catch(toHttpError);
 	if (!plant) error(404, 'Растението не е намерено.');
+	const enhanced = await findEnhanced(locals.supabase, plant.photos.map((photo) => photo.path));
 	const urls = await signPaths(
 		locals.supabase,
-		plant.photos.flatMap((photo) => [photo.thumb_path, photo.path])
+		plant.photos.flatMap((photo) => [
+			photo.thumb_path,
+			photo.path,
+			...(enhanced.has(photo.path) ? [enhancedPath(photo.path)] : [])
+		])
 	).catch(toHttpError);
 	return {
 		plant: { id: plant.id, name_bg: plant.name_bg },
@@ -30,6 +37,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			thumbPath: photo.thumb_path,
 			thumbUrl: urls.get(photo.thumb_path) ?? null,
 			url: urls.get(photo.path) ?? null,
+			enhancedUrl: enhanced.has(photo.path) ? (urls.get(enhancedPath(photo.path)) ?? null) : null,
 			createdAt: photo.created_at,
 			isPrimary: photo.is_primary
 		}))

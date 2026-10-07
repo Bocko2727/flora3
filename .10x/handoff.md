@@ -12,18 +12,10 @@
 Следващ: <роля и защо>
 ```
 
-## 2026-10-07 · developer (claude.ai сесия) · 3.5 feat/upload-many
-Статус: DONE (чака e2e, db и integration от собственика — тук няма Docker)
-Резултат: страница `/plants/upload` („Качи растение“): режим „всяка снимка е отделно растение“ / „всички са едно“; най-много 10 файла, дубликатите се махат; изрично „Анализирай (N заявки)“ — нула заявки до клика; една заявка на растение, последователно; спира при quota/forbidden/not_configured/upstream; без авто-повторение; запис по карта само с клик през `/plants/new` и `PhotoUploader`; подсказка при същото латинско име (не блокира). След първия анализ или запис изборът се замразява (без загуба на платени резултати).
-Променени файлове: src/lib/upload/{drafts,queue,names}.ts (нови), src/lib/components/UploadDraftCard.svelte (нов), src/routes/plants/upload/+page.{svelte,server.ts} (нови), src/routes/+page.svelte (връзка), tests/unit/upload-{drafts,queue,names}.test.ts (нови), tests/e2e/flora.spec.ts (3 нови теста)
-Доказателства: check 0 грешки · unit 205/205 · build OK · e2e, test:db, integration НЕ са пускани. Ревизор (отделен агент): CHANGES → поправени запазено растение в опашката, прекъснато качване при „Качи още“, загуба на платен анализ при смяна на режима, подсказка за дубликат между карти, чисто създаване на object URL, безсмислен бутон след квота, подвеждащ текст.
-Рискове / несигурност: e2e са написани по образец и не са изпълнявани; няма screenshot-и при 360/1280 (няма сесия със Supabase тук). Квотата се харчи преди отговора на Pl@ntNet — неуспешна заявка също се брои. Няма RPC за остатъка (не е добавен — иска миграция).
-Следващ: собственикът пуска `db:reset` → `test:db` → `test:unit` → `test:integration` → `test:e2e` → `check` → `build` и прави screenshot-и; после merge.
-
-## 2026-10-07 · developer (claude.ai сесия) · 3.6 feat/picture-now
-Статус: DONE (чака e2e и screenshot-и от собственика — тук няма Docker)
-Резултат: бутон „Снимай сега“ (`<input type="file" accept="image/*" capture="environment">`) на `/plants/upload`; всяка снимка от камерата се добавя към избора (не го замества), после същият поток като 3.5. Нищо не се изпраща към Pl@ntNet и нищо не се записва без клик; след първия анализ или запис бутонът е заключен. Без нови разрешения.
-Променени файлове: src/lib/upload/drafts.ts (mergeSelection), src/routes/plants/upload/+page.svelte, tests/unit/upload-drafts.test.ts, tests/e2e/flora.spec.ts (1 нов тест), .10x/*
-Доказателства: check 0 грешки · unit покрива mergeSelection (червен → зелен) · e2e не е пускан.
-Рискове / несигурност: клонът стъпва на `feat/upload-many` (PR #25, още не влят) — PR-ът е с база `feat/upload-many`; след merge на #25 се пренасочва към `main`. На десктоп `capture` се игнорира и се отваря обикновен избор на файл.
-Следващ: собственикът merge-ва #25, после този PR.
+## 2026-10-07 · developer (claude.ai сесия) · 3.7 feat/image-enhancer
+Статус: DONE (чака integration, e2e и screenshot-и от собственика — тук няма Docker)
+Резултат: Image Enhancer БЕЗ миграция. Подобреното копие е отделен файл `<owner>/<plant>/<id>_enh.jpg` в частния bucket `photos`; `plant_photos` не се променя; откат = триене на `_enh.jpg`. Алгоритъм от прототипа: една крива по яркост за R, G, B + unsharp (радиус 1, 0,45), най-много 2000 px, JPEG 0,92, без EXIF. В редактирането: отметка „Избери за подобряване“, „Подобри избраните (N)“ (най-много 10, едно по едно, в браузъра), сравнение с плъзгач, „Махни подобреното“. В прегледа на цял екран: „Оригинал | Подобрено копие“, по подразбиране Оригинал. Разпознаването остава върху оригинала. Изтриването на снимка или растение чисти и `_enh`.
+Променени файлове: src/lib/photos/{enhance,enhance-browser}.ts (нови), src/lib/photos/storage.ts, src/lib/server/{enhanced,plants}.ts, src/routes/plants/[id]/{+page.server.ts,edit/+page.server.ts}, src/lib/components/{PhotoManager,Gallery}.svelte, tests/unit/{photo-enhance,enhanced-find,photo-paths}.test.ts, tests/integration/photos.test.ts, tests/e2e/flora.spec.ts, .10x/*
+Доказателства: check 0 грешки · unit 199/199 (нови тестове първо червени) · build OK · integration, e2e НЕ са пускани. Ревизор (отделен агент): CHANGES → поправени грешен брой неуспели, превключвател на 360 px, кеш на подобреното копие; потвърдено: няма път за презаписване на оригинал или thumb.
+Рискове / несигурност: зареждането на растение прави по един `list` на папката (при грешка страницата работи без подобрените копия); пикова памет ~100 MB на снимка при 2000 px (последователно, както в прототипа); сравнението зарежда пълните кадри; няма screenshot-и при 360/1280 px.
+Следващ: собственикът пуска целия набор и прави screenshot-и; после merge.

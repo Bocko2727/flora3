@@ -1,3 +1,4 @@
+import { enhancedPath } from '$lib/photos/storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/database.types';
 import { UserFacingError, describeDbError } from '$lib/errors';
@@ -144,7 +145,7 @@ export async function deletePlant(db: Db, id: string): Promise<void> {
 		throw new UserFacingError(message, error);
 	}
 
-	const paths = data.flatMap((row) => [row.path, row.thumb_path]);
+	const paths = data.flatMap((row) => [row.path, row.thumb_path, enhancedPath(row.path)]);
 	if (paths.length > 0) {
 		const { error: removeError } = await db.storage.from('photos').remove(paths);
 		if (removeError) console.error('Orphaned photo files after deleting plant', id, paths, removeError);
