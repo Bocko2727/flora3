@@ -3,10 +3,12 @@ import { findEnhanced } from '$lib/server/enhanced';
 import type { Db } from '$lib/server/plants';
 
 function fakeDb(folders: Record<string, string[] | Error>) {
-	const list = vi.fn(async (folder: string, _options?: unknown) => {
+	const list = vi.fn(async (folder: string, options?: { limit?: number; offset?: number }) => {
 		const entry = folders[folder];
 		if (entry instanceof Error) return { data: null, error: entry };
-		return { data: (entry ?? []).map((name) => ({ name })), error: null };
+		const offset = options?.offset ?? 0;
+		const limit = options?.limit ?? 100;
+		return { data: (entry ?? []).slice(offset, offset + limit).map((name) => ({ name })), error: null };
 	});
 	return { db: { storage: { from: () => ({ list }) } } as unknown as Db, list };
 }
@@ -24,6 +26,15 @@ describe('findEnhanced', () => {
 		expect(list).toHaveBeenCalledTimes(2);
 		expect(list.mock.calls[0][1]).toMatchObject({ limit: 1000 });
 		expect([...found]).toEqual(['o/q/c.jpg']);
+	});
+
+	it('reads every page, so a copy beyond the first 1000 objects is still found', async () => {
+		const names = Array.from({ length: 2500 }, (_, i) => `f${i}.jpg`);
+		names[2200] = 'e_enh.jpg';
+		const { db, list } = fakeDb({ 'o/p': names });
+		const found = await findEnhanced(db, ['o/p/e.jpg']);
+		expect([...found]).toEqual(['o/p/e.jpg']);
+		expect(list).toHaveBeenCalledTimes(3);
 	});
 
 	it('does not list anything when there are no photos', async () => {
