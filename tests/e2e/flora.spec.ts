@@ -459,6 +459,57 @@ test('viewer does not see the review', async ({ page }) => {
 	await logout(page);
 });
 
+test('image enhancer: the enhanced copy sits beside the original, which stays untouched', async ({ page }) => {
+	await resetCatalog();
+	await login(page, EDITOR);
+	await page.getByRole('link', { name: '+ Растение' }).click();
+	await page.getByLabel('Българско име').fill('Паричка');
+	await page.getByLabel('Латинско име').fill('Bellis perennis');
+	await page.getByLabel('Снимки', { exact: true }).setInputFiles([fixture('leaf-a.jpg')]);
+	await page.getByRole('button', { name: 'Запази растението' }).click();
+	await expect(page.getByRole('heading', { name: 'Паричка' })).toBeVisible({ timeout: 30_000 });
+	const url = new URL(page.url()).pathname;
+	const id = url.split('/').pop()!;
+
+	const admin = adminClient();
+	const row = await admin.from('plant_photos').select('id, path, sha256, bytes').eq('plant_id', id).single();
+	expect(row.data).toBeTruthy();
+	const original = row.data!;
+	const readOriginal = async () => Buffer.from(await (await admin.storage.from('photos').download(original.path)).data!.arrayBuffer());
+	const bytesBefore = await readOriginal();
+	const folder = original.path.slice(0, original.path.lastIndexOf('/'));
+	const enhancedName = `${original.id}_enh.jpg`;
+	const names = async () => ((await admin.storage.from('photos').list(folder)).data ?? []).map((f) => f.name);
+	expect(await names()).not.toContain(enhancedName);
+
+	await gotoSettled(page, `${url}/edit`);
+	await page.getByLabel('Избери за подобряване').check();
+	await page.getByRole('button', { name: 'Подобри избраните (1)' }).click();
+	await expect(page.getByLabel(/Сравни оригинал и подобрено копие/)).toBeVisible({ timeout: 60_000 });
+	expect(await names()).toContain(enhancedName);
+	expect((await readOriginal()).equals(bytesBefore)).toBe(true);
+	const after = await admin.from('plant_photos').select('sha256, bytes').eq('id', original.id).single();
+	expect(after.data).toEqual({ sha256: original.sha256, bytes: original.bytes });
+
+	// The viewer opens on the original and offers the enhanced copy as a display choice.
+	await gotoSettled(page, url);
+	await page.getByRole('button', { name: 'Отвори снимка 1 от 1' }).click();
+	const viewer = page.getByRole('dialog', { name: 'Снимка на цял екран' });
+	await expect(viewer.getByRole('button', { name: 'Оригинал' })).toHaveAttribute('aria-pressed', 'true');
+	await viewer.getByRole('button', { name: 'Подобрено копие' }).click();
+	await expect(viewer.getByRole('img', { name: /подобрено копие/ })).toBeVisible();
+	await page.keyboard.press('Escape');
+
+	// Removing the enhanced copy leaves the original alone.
+	await gotoSettled(page, `${url}/edit`);
+	await page.getByRole('button', { name: 'Махни подобреното' }).click();
+	await expect(page.getByLabel(/Сравни оригинал и подобрено копие/)).toHaveCount(0);
+	expect(await names()).not.toContain(enhancedName);
+	expect((await readOriginal()).equals(bytesBefore)).toBe(true);
+	await logout(page);
+	await resetCatalog();
+});
+
 // Runs last: the first test above expects an empty catalog, so this block starts from a clean
 // catalog of its own and removes its plants afterwards.
 test.describe('catalog pages of 15 / 30 / 45', () => {

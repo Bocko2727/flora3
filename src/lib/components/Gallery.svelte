@@ -1,5 +1,13 @@
 <script lang="ts">
-	type GalleryPhoto = { id: string; url: string | null; thumbUrl: string | null; width: number; height: number };
+	type GalleryPhoto = {
+		id: string;
+		url: string | null;
+		thumbUrl: string | null;
+		/** Display-only enhanced copy (levels + light sharpening); the original stays the default. */
+		enhancedUrl?: string | null;
+		width: number;
+		height: number;
+	};
 	/** Thumbnails start at `from`; earlier photos (the primary one) are opened by the page through `open`. */
 	let { photos, alt, from = 0 }: { photos: GalleryPhoto[]; alt: string; from?: number } = $props();
 
@@ -7,7 +15,10 @@
 	let index = $state(0);
 	let isOpen = $state(false);
 	let failed = $state<Record<string, boolean>>({});
+	let showEnhanced = $state<Record<string, boolean>>({});
 	const current = $derived(photos[index]);
+	const enhancedShown = $derived(Boolean(current && current.enhancedUrl && showEnhanced[current.id]));
+	const shownUrl = $derived(enhancedShown ? current?.enhancedUrl : current?.url);
 
 	export function open(i: number) {
 		index = i;
@@ -49,16 +60,22 @@
 
 <dialog bind:this={dialog} class="viewer" aria-label="Снимка на цял екран" {onkeydown} onclose={() => (isOpen = false)}>
 	{#if isOpen && current}
-		{#if current.url && !failed[`${current.id}:full`]}
+		{#if shownUrl && !failed[`${current.id}:${enhancedShown ? 'enh' : 'full'}`]}
 			<img
-				src={current.url}
-				alt={`${alt} — снимка ${index + 1}`}
-				onerror={() => (failed[`${current.id}:full`] = true)}
+				src={shownUrl}
+				alt={`${alt} — снимка ${index + 1}${enhancedShown ? ' (подобрено копие)' : ''}`}
+				onerror={() => (failed[`${current.id}:${enhancedShown ? 'enh' : 'full'}`] = true)}
 			/>
 		{:else}
 			<p>Снимката липсва.</p>
 		{/if}
 		<div class="controls">
+			{#if current.enhancedUrl}
+				<div class="versions" role="group" aria-label="Коя версия да се показва">
+					<button type="button" aria-pressed={!enhancedShown} onclick={() => (showEnhanced[current.id] = false)}>Оригинал</button>
+					<button type="button" aria-pressed={enhancedShown} onclick={() => (showEnhanced[current.id] = true)}>Подобрено копие</button>
+				</div>
+			{/if}
 			{#if photos.length > 1}
 				<button type="button" onclick={() => step(-1)} aria-label="Предишна">‹</button>
 				<span>{index + 1} / {photos.length}</span>
@@ -78,5 +95,8 @@
 	.viewer::backdrop { background: #000; }
 	.viewer img { width: 100%; height: calc(100dvh - 64px - env(safe-area-inset-bottom)); object-fit: contain; }
 	.controls { box-sizing: content-box; height: 64px; font-variant-numeric: tabular-nums; padding-bottom: env(safe-area-inset-bottom); display: flex; align-items: center; justify-content: center; gap: 1rem; }
+	.controls { flex-wrap: wrap; }
 	.controls button { background: #222; color: #fff; border-color: #444; }
+	.versions { display: flex; gap: 0.25rem; }
+	.versions button[aria-pressed='true'] { border-color: #fff; outline: 2px solid #fff; font-weight: 600; }
 </style>
