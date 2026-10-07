@@ -4,7 +4,7 @@
 	import { MAX_FILES_PER_BATCH } from '$lib/photos/process';
 	import { buildDrafts, requestCount, type Draft, type UploadMode } from '$lib/upload/drafts';
 	import { analyzeDrafts, type DraftState } from '$lib/upload/queue';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -16,7 +16,9 @@
 	let tooMany = $state(false);
 	let duplicates = $state(0);
 	let running = $state(false);
-	let savedCount = $state(0);
+	let saved = $state<Record<string, boolean>>({});
+	let settled = $state<Record<string, boolean>>({});
+	let catalog = $state(untrack(() => [...data.catalog]));
 	let inputKey = $state(0);
 	let token = 0;
 	let destroyed = false;
@@ -26,9 +28,20 @@
 	});
 
 	const idle = (id: string): DraftState => states[id] ?? { phase: 'idle' };
-	const pending = $derived(drafts.filter((d) => idle(d.id).phase === 'idle'));
+	// A saved plant never goes back into the queue: its AI panel is gone and every request spends quota.
+	const pending = $derived(drafts.filter((d) => idle(d.id).phase === 'idle' && !saved[d.id]));
 	const pendingRequests = $derived(requestCount(pending));
-	const locked = $derived(savedCount > 0);
+	const savedCount = $derived(Object.keys(saved).length);
+	const uploading = $derived(Object.keys(saved).some((id) => !settled[id]));
+	// After the first analysis or save the choice is frozen: rebuilding would throw away paid results and typed names.
+	const started = $derived(Object.keys(states).length > 0 || savedCount > 0);
+	const frozen = $derived(started || running);
+	const stoppedForGood = $derived(
+		Object.values(states).some(
+			(s) => s.phase === 'error' && (s.code === 'quota' || s.code === 'forbidden' || s.code === 'not_configured')
+		)
+	);
+	const hasSuggestions = $derived(Object.values(states).some((s) => s.phase === 'ok'));
 	const photosBeyondAnalysis = $derived(mode === 'one' && selected.length > IDENTIFY_MAX_IMAGES);
 
 	// Changing the files or the mode only rebuilds the cards. It never sends anything.
@@ -43,12 +56,14 @@
 	}
 
 	function pickFiles(list: FileList | null) {
-		selected = [...(list ?? [])];
+		// A cancelled file dialog on a phone gives an empty list; that must not wipe the choice.
+		if (!list || list.length === 0 || frozen) return;
+		selected = [...list];
 		rebuild();
 	}
 
 	function setMode(next: UploadMode) {
-		if (locked || next === mode) return;
+		if (frozen || next === mode) return;
 		mode = next;
 		rebuild();
 	}
@@ -70,7 +85,9 @@
 
 	function reset() {
 		selected = [];
-		savedCount = 0;
+		saved = {};
+		settled = {};
+		catalog = [...data.catalog];
 		inputKey += 1;
 		rebuild();
 	}
@@ -82,10 +99,10 @@
 <h1>Качи растение</h1>
 
 <div class="modes" role="group" aria-label="Как да се броят снимките">
-	<button type="button" class="mode" aria-pressed={mode === 'each'} disabled={locked} onclick={() => setMode('each')}>
+	<button type="button" class="mode" aria-pressed={mode === 'each'} disabled={frozen} onclick={() => setMode('each')}>
 		Всяка снимка е отделно растение
 	</button>
-	<button type="button" class="mode" aria-pressed={mode === 'one'} disabled={locked} onclick={() => setMode('one')}>
+	<button type="button" class="mode" aria-pressed={mode === 'one'} disabled={frozen} onclick={() => setMode('one')}>
 		Всички снимки са едно растение
 	</button>
 </div>
@@ -93,7 +110,7 @@
 {#key inputKey}
 	<div class="picker">
 		<label for="files">Снимки от устройството (най-много {MAX_FILES_PER_BATCH})</label>
-		<input id="files" type="file" accept="image/*" multiple disabled={locked} onchange={(e) => pickFiles(e.currentTarget.files)} />
+		<input id="files" type="file" accept="image/*" multiple disabled={frozen} onchange={(e) => pickFiles(e.currentTarget.files)} />
 	</div>
 {/key}
 {#if tooMany}<p class="field-error">Най-много {MAX_FILES_PER_BATCH} снимки наведнъж; останалите са пропуснати.</p>{/if}
@@ -115,8 +132,10 @@
 			</button>
 		{:else if running}
 			<p role="status">Анализира се…</p>
-		{:else}
+		{:else if hasSuggestions}
 			<p class="muted">Нищо не е записано автоматично. Избери предложение, провери го и запази всяко растение отделно.</p>
+		{:else}
+			<p class="muted">Няма предложения. Попълни имената сам и запази всяко растение отделно; нищо не се записва автоматично.</p>
 		{/if}
 	</section>
 
@@ -128,16 +147,28 @@
 				ownerId={data.user?.id ?? ''}
 				files={draft.files}
 				analysis={idle(draft.id)}
-				catalog={data.catalog}
+				catalog={catalog}
+				canAnalyze={!stoppedForGood}
 				busy={running}
 				onanalyze={() => run([draft])}
-				onsaved={() => (savedCount += 1)}
+				onsaved={(name) => {
+					saved[draft.id] = true;
+					catalog.push({ id: draft.id, scientific_name: name });
+				}}
+				onsettled={() => (settled[draft.id] = true)}
 			/>
 		{/each}
 	</div>
 
-	{#if locked}
-		<p><button type="button" onclick={reset} disabled={running}>Качи още растения</button></p>
+	{#if started}
+		<p>
+			<button type="button" onclick={reset} disabled={running || uploading}>
+				{savedCount > 0 ? 'Качи още растения' : 'Започни отначало'}
+			</button>
+		</p>
+		{#if savedCount < drafts.length && savedCount > 0}
+			<p class="muted">Незапазените карти и платените им предложения ще се изчистят.</p>
+		{/if}
 	{/if}
 {/if}
 

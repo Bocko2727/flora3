@@ -530,7 +530,32 @@ test('upload many: the queue stops at the quota and the unsent plants can be ana
 	await expect(page.getByText('Не е изпратено, защото по-рано заявката спря.')).toBeVisible();
 	// Plant 1 was analysed, plant 2 hit the limit, plant 3 was never sent: two requests, not three.
 	expect(calls).toBe(2);
-	await expect(page.getByRole('button', { name: 'Анализирай само това (1 заявка)' })).toBeVisible();
+	// After a quota stop a single retry would be pointless, so the button is not offered.
+	await expect(page.getByRole('button', { name: 'Анализирай само това (1 заявка)' })).toHaveCount(0);
+	await logout(page);
+	await resetCatalog();
+});
+
+test('upload many: a plant that is already saved is not analysed again', async ({ page }) => {
+	await resetCatalog();
+	let calls = 0;
+	await page.route(IDENTIFY_URL, (route) => {
+		calls += 1;
+		return route.fulfill({ status: 200, contentType: 'application/json', body: identifyOk });
+	});
+	await login(page, EDITOR);
+	await gotoSettled(page, '/plants/upload');
+	await page.getByLabel(/Снимки от устройството/).setInputFiles([fixture('leaf-a.jpg'), fixture('leaf-b.jpg')]);
+	const card = (n: number) => page.getByRole('region', { name: `Растение ${n}` });
+	await card(1).getByLabel('Българско име').fill('Шипка');
+	await card(1).getByLabel('Латинско име').fill('Rosa canina');
+	await card(1).getByRole('button', { name: 'Запази растението' }).click();
+	await expect(card(1).getByRole('link', { name: 'Към растението' })).toBeVisible({ timeout: 60_000 });
+
+	await expect(page.getByRole('button', { name: 'Анализирай (1 заявка)' })).toBeVisible();
+	await page.getByRole('button', { name: 'Анализирай (1 заявка)' }).click();
+	await expect(card(2).getByText('71 %')).toBeVisible({ timeout: 30_000 });
+	expect(calls).toBe(1);
 	await logout(page);
 	await resetCatalog();
 });

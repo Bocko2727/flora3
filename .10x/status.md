@@ -12,7 +12,7 @@
 
 ## Следващи задачи (по ред)
 1. `feat/species-profile-qa` — профил като въпроси и отговори от `legacy_ai` („AI текст · непроверен“) + лента „Снимки по месеци“ (`docs/prototype/HANDOFF.md` §3.4).
-2. `feat/upload-many` — „Качи растение“ за няколко растения; една заявка към Pl@ntNet на растение (§3.5).
+2. `feat/upload-many` (§3.5) — готово, PR е отворен; чака `test:db`/`integration`/`e2e` и screenshot-и от собственика, после merge.
 3. `feat/picture-now` — камера на момента, същият поток (§3.6).
 4. CI фаза B: локален Supabase + `db:reset` → `test:db` → `test:integration` → `test:e2e`.
 5. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).

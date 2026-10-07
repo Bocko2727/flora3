@@ -15,9 +15,11 @@
 		catalog: { id: string; scientific_name: string }[];
 		busy: boolean;
 		onanalyze: () => void;
-		onsaved: () => void;
+		canAnalyze: boolean;
+		onsaved: (scientificName: string) => void;
+		onsettled: () => void;
 	};
-	let { index, plantId, ownerId, files, analysis, catalog, busy, onanalyze, onsaved }: Props = $props();
+	let { index, plantId, ownerId, files, analysis, catalog, busy, canAnalyze, onanalyze, onsaved, onsettled }: Props = $props();
 
 	let nameBg = $state('');
 	let scientific = $state('');
@@ -30,10 +32,11 @@
 	let photoFailures = $state(0);
 	let photosDone = $state(false);
 
-	const previews = $derived.by(() => files.map((file) => ({ file, url: URL.createObjectURL(file) })));
+	let previews = $state<{ file: File; url: string }[]>([]);
 	$effect(() => {
-		const urls = previews.map((p) => p.url);
-		return () => urls.forEach((url) => URL.revokeObjectURL(url));
+		const made = files.map((file) => ({ file, url: URL.createObjectURL(file) }));
+		previews = made;
+		return () => made.forEach((p) => URL.revokeObjectURL(p.url));
 	});
 
 	const sent = $derived(analysis.phase === 'ok' ? analysis.sent : 0);
@@ -85,7 +88,9 @@
 				<p><span class="spinner" aria-hidden="true"></span> Разпознаване…</p>
 			{:else if analysis.phase === 'skipped'}
 				<p class="muted">Не е изпратено, защото по-рано заявката спря.</p>
-				<button type="button" disabled={busy} onclick={onanalyze}>Анализирай само това (1 заявка)</button>
+				{#if canAnalyze}
+					<button type="button" disabled={busy} onclick={onanalyze}>Анализирай само това (1 заявка)</button>
+				{/if}
 			{:else if analysis.phase === 'error'}
 				<p class="error">{analysis.message}</p>
 				{#if retryable}
@@ -123,12 +128,12 @@
 					saving = false;
 					if (result.type === 'success' && result.data?.created) {
 						savedId = String(result.data.id);
-						onsaved();
+						onsaved(scientific.trim());
 					} else if (result.type === 'failure') {
 						message = String(result.data?.message ?? '');
 						errors = (result.data?.errors as Record<string, string> | undefined) ?? {};
 					} else {
-						message = 'Растението не можа да се запази. Опитай пак.';
+						message = 'Растението не можа да се запази или отговорът не стигна. Провери в каталога, преди да опиташ пак.';
 					}
 				};
 			}}
@@ -167,6 +172,7 @@
 			onsettled={(summary) => {
 				photoFailures = summary.failed;
 				photosDone = true;
+				onsettled();
 			}}
 		/>
 		{#if photosDone}
