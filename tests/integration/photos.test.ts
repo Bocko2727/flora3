@@ -7,7 +7,7 @@ import { UserFacingError } from '$lib/errors';
 import type { ProcessedPhoto } from '$lib/photos/process';
 import { deletePhoto, findPhotoBySha, removeEnhanced, saveEnhanced, savePhoto, setPrimaryPhoto } from '$lib/photos/storage';
 import { findEnhanced } from '$lib/server/enhanced';
-import { createPlant } from '$lib/server/plants';
+import { createPlant, deletePlant } from '$lib/server/plants';
 import { signPaths } from '$lib/server/signed-urls';
 import { EDITOR, VIEWER, ensureUser, resetCatalog, signedInClient } from '../helpers/supabase';
 
@@ -173,6 +173,14 @@ describe('enhanced copy', () => {
 		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '7') });
 		await saveEnhanced(editor, row.path, await enhancedBlob());
 		await deletePhoto(editor, row);
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(0);
+	});
+
+	it('is deleted together with its plant', async () => {
+		const row = await savePhoto(editor, { ownerId: editorId, plantId, photoId: randomUUID(), photo: await photo('#2f6b3a', '5') });
+		await saveEnhanced(editor, row.path, await enhancedBlob());
+		expect(await objectCount(`${editorId}/${plantId}`)).toBe(3);
+		await deletePlant(editor, plantId);
 		expect(await objectCount(`${editorId}/${plantId}`)).toBe(0);
 	});
 
