@@ -3,13 +3,11 @@
 	import Gallery from '$lib/components/Gallery.svelte';
 	import LegacyAiPanel from '$lib/components/LegacyAiPanel.svelte';
 	import PhotoMonths from '$lib/components/PhotoMonths.svelte';
-	import { sameName } from '$lib/identify/types';
-	import { statusView } from '$lib/status';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 	const plant = $derived(data.plant);
-	const view = $derived(statusView(plant.id_status, plant.name_source));
 	const primary = $derived(data.photos[0] ?? null);
 
 	let gallery = $state<ReturnType<typeof Gallery>>();
@@ -23,25 +21,28 @@
 		!primary ? null : heroStage === 0 ? (primary.url ?? primary.thumbUrl) : heroStage === 1 ? primary.thumbUrl : null
 	);
 
-	const NAME_CHECK: Record<string, string> = {
-		accepted: 'GBIF прието',
-		synonym: 'GBIF синоним',
-		doubtful: 'GBIF съмнително',
-		none: 'няма в GBIF'
-	};
-	const aiMatch = $derived(
-		data.latest?.candidates.find((candidate) => sameName(candidate.scientific_name, plant.scientific_name)) ?? null
+	const facts = $derived(
+		[
+			{ label: 'Българско име', value: plant.name_bg },
+			{ label: 'Научно име', value: plant.scientific_name, latin: true },
+			{ label: 'Семейство', value: plant.family },
+			{ label: 'Местообитание', value: plant.habitat },
+			{ label: 'Бележки', value: plant.notes }
+		].filter((fact) => fact.value)
 	);
-	const determinedBy = $derived(
-		aiMatch
-			? `Pl@ntNet ${Math.round(aiMatch.score * 100)}\u00a0%`
-			: plant.name_source === 'manual'
-				? 'ръчно'
-				: plant.name_source === 'legacy_ai'
-					? 'стар AI'
-					: 'Pl@ntNet'
-	);
-	const nameCheck = $derived(plant.gbif_match ? (NAME_CHECK[plant.gbif_match] ?? plant.gbif_match) : 'не е проверено');
+
+	type Tab = 'info' | 'evidence';
+	let tab = $state<Tab>('info');
+	const TABS: { id: Tab; label: string }[] = [
+		{ id: 'info', label: 'Информация' },
+		{ id: 'evidence', label: 'Доказателства' }
+	];
+	function onTabKey(event: KeyboardEvent) {
+		if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+		event.preventDefault();
+		tab = tab === 'info' ? 'evidence' : 'info';
+		document.getElementById(`tab-${tab}`)?.focus();
+	}
 </script>
 
 <svelte:head><title>{plant.name_bg} · Флора</title></svelte:head>
@@ -49,152 +50,171 @@
 <div class="plant">
 	<p class="back"><a href="/">← Каталог</a></p>
 
-	<article class="sheet">
-		{#if primary}
-			<button
-				type="button"
-				class="specimen"
-				onclick={() => gallery?.open(0)}
-				aria-label={`Отвори снимка 1 от ${data.photos.length}`}
-			>
-				{#if heroUrl}
-					<img
-						src={heroUrl}
-						alt=""
-						width={primary.width}
-						height={primary.height}
-						fetchpriority="high"
-						decoding="async"
-						onerror={() => (heroStage += 1)}
-					/>
-				{:else}
-					<span class="muted">Снимката липсва</span>
-				{/if}
-			</button>
-		{:else}
-			<p class="specimen empty muted">Няма снимки.</p>
-		{/if}
+	<!-- Left: the specimen and its name. Right: what it is. Below: the record, split in two tabs. -->
+	<div class="top">
+		<div class="media">
+			{#if primary}
+				<button
+					type="button"
+					class="specimen"
+					onclick={() => gallery?.open(0)}
+					aria-label={`Отвори снимка 1 от ${data.photos.length}`}
+				>
+					{#if heroUrl}
+						<img
+							src={heroUrl}
+							alt=""
+							width={primary.width}
+							height={primary.height}
+							fetchpriority="high"
+							decoding="async"
+							onerror={() => (heroStage += 1)}
+						/>
+					{:else}
+						<span class="muted">Снимката липсва</span>
+					{/if}
+				</button>
+			{:else}
+				<p class="specimen empty muted">Няма снимки.</p>
+			{/if}
 
-		<div class="specimen-label">
-			{#if plant.family}<p class="family">{plant.family}</p>{/if}
-			<p class="latin">{plant.scientific_name}</p>
-			<h1>{plant.name_bg}</h1>
-			<p class="det num">det.: {determinedBy} · име: {nameCheck}</p>
+			<header class="name">
+				<h1>{plant.name_bg}</h1>
+				<p class="latin">{plant.scientific_name}</p>
+				{#if plant.family}<p class="family">{plant.family}</p>{/if}
+			</header>
+
+			{#if primary}
+				<section class="more-photos">
+					{#if data.photos.length > 1}<h2 class="visually-hidden">Снимки</h2>{/if}
+					<Gallery bind:this={gallery} photos={data.photos} alt={plant.name_bg} from={1} />
+				</section>
+			{/if}
 		</div>
-		<p class="stamp {view.tone}"><span class="visually-hidden">Статус: </span><span>{view.label}</span></p>
-		<p class="explain muted">{view.explanation}</p>
-	</article>
 
-	<Evidence plant={plant} latest={data.latest} isEditor={data.isEditor} message={form?.message} />
-
-	{#if data.isEditor}
-		<div class="actions">
-			<a class="button" href={`/plants/${plant.id}/edit`}>Редактирай</a>
-		</div>
-	{/if}
-
-	{#if primary}
-		<section>
-			{#if data.photos.length > 1}<h2>Снимки</h2>{/if}
-			<Gallery bind:this={gallery} photos={data.photos} alt={plant.name_bg} from={1} />
-		</section>
-	{/if}
-
-	{#each [{ title: 'Описание', text: plant.description }, { title: 'Местообитание', text: plant.habitat }, { title: 'Бележки', text: plant.notes }] as section (section.title)}
-		{#if section.text}
-			<section>
-				<h2>{section.title}</h2>
-				<p class="prose">{section.text}</p>
-				{#if section.title === 'Описание' && plant.description_source === 'wikipedia' && plant.wiki_url}
+		<div class="about">
+			{#if plant.description}
+				<h2>Описание</h2>
+				<p class="prose">{plant.description}</p>
+				{#if plant.description_source === 'wikipedia' && plant.wiki_url}
 					<p class="muted source">Из Уикипедия · <a href={plant.wiki_url} target="_blank" rel="noopener">статията</a> · CC BY-SA 4.0</p>
 				{/if}
-			</section>
-		{/if}
-	{/each}
+			{:else}
+				<p class="muted">Все още няма описание.</p>
+			{/if}
+		</div>
+	</div>
 
-	<PhotoMonths months={data.months} total={data.photos.length} dated={data.datedPhotos} />
+	<section class="record" aria-label="Данни за растението">
+		<div class="tabs" role="tablist" aria-label="Данни за растението" tabindex="-1" onkeydown={onTabKey}>
+			{#each TABS as item (item.id)}
+				<button
+					type="button"
+					role="tab"
+					id={`tab-${item.id}`}
+					class="tab"
+					aria-selected={tab === item.id}
+					aria-controls={`panel-${item.id}`}
+					tabindex={tab === item.id ? 0 : -1}
+					onclick={() => (tab = item.id)}>{item.label}</button
+				>
+			{/each}
+		</div>
 
-	<LegacyAiPanel legacy={data.legacy} />
+		<div role="tabpanel" id="panel-info" aria-labelledby="tab-info" class="panel" hidden={tab !== 'info'}>
+			<dl class="facts">
+				{#each facts as fact (fact.label)}
+					<dt>{fact.label}</dt>
+					<dd class:latin={fact.latin}>{fact.value}</dd>
+				{/each}
+			</dl>
+
+			<PhotoMonths months={data.months} total={data.photos.length} dated={data.datedPhotos} />
+
+			<LegacyAiPanel legacy={data.legacy} />
+		</div>
+
+		<div role="tabpanel" id="panel-evidence" aria-labelledby="tab-evidence" class="panel" hidden={tab !== 'evidence'}>
+			<StatusBadge status={plant.id_status} nameSource={plant.name_source} explain />
+			<Evidence plant={plant} latest={data.latest} isEditor={data.isEditor} message={form?.message} />
+			{#if data.isEditor}
+				<div class="actions">
+					<a class="button" href={`/plants/${plant.id}/edit`}>Редактирай</a>
+				</div>
+			{/if}
+		</div>
+	</section>
 </div>
 
 <style>
-	.source { font-size: var(--text-xs); margin-top: var(--space-1); }
 	.plant { max-width: 720px; margin: 0 auto; }
 	.back { margin: 0 0 var(--space-3); }
 	.back a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
 	.back a:hover { text-decoration: underline; }
 
-	/* Herbarium sheet: the specimen lies on the paper, the label sits below it, the status is a stamp. */
-	.sheet {
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		box-shadow: var(--shadow-sheet);
-		padding: var(--space-3);
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		align-items: start;
-		column-gap: var(--space-3);
-	}
-	.specimen,
-	.specimen-label,
-	.explain { grid-column: 1 / -1; }
+	.top { display: grid; gap: var(--space-4); }
+	.media, .about { min-width: 0; }
+
 	.specimen {
 		display: block;
 		width: 100%;
 		padding: 0;
-		border: none;
-		border-radius: 4px;
-		background: var(--bg);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		background: var(--surface);
 		overflow: hidden;
 		min-height: 120px;
 	}
-	.specimen img { width: 100%; height: auto; max-height: min(70vh, 640px); object-fit: cover; }
+	.specimen img { display: block; width: 100%; height: auto; max-height: min(60vh, 560px); object-fit: cover; }
 	.specimen .muted { display: block; padding: var(--space-6) var(--space-4); }
 	.specimen.empty { margin: 0; padding: var(--space-6) var(--space-4); text-align: center; display: grid; place-items: center; }
 
-	.specimen-label {
-		margin: var(--space-3) 0 0 auto;
-		width: min(100%, 30rem);
-		border: 1px solid var(--text);
-		padding: var(--space-2) var(--space-3) var(--space-3);
-		display: grid;
-		gap: 2px;
-		min-width: 0;
-	}
-	.specimen-label p { margin: 0; overflow-wrap: anywhere; }
-	.family { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-	.specimen-label .latin { font-size: var(--text-xl); line-height: 1.15; }
-	.specimen-label h1 { font-family: var(--font-body); font-size: var(--text-base); font-weight: 600; letter-spacing: 0; margin: var(--space-1) 0 0; }
-	.det { font-size: var(--text-xs); color: var(--muted); margin-top: var(--space-1) !important; }
+	/* The common (Bulgarian) name leads; the Latin name is smaller. */
+	.name { margin: var(--space-3) 0; }
+	.name p { margin: 0; overflow-wrap: anywhere; }
+	.name h1 { font-size: var(--text-2xl); line-height: 1.15; margin: 0; overflow-wrap: anywhere; }
+	.name .latin { font-size: var(--text-base); color: var(--muted); margin-top: var(--space-1); }
+	.family { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: var(--space-1) !important; }
 
-	.stamp {
-		grid-column: 2;
-		grid-row: 3;
-		width: 88px;
-		height: 88px;
-		margin: -0.75rem var(--space-2) 0 0;
-		border-radius: 50%;
-		border: 1.5px solid var(--accent);
-		color: var(--accent);
-		display: grid;
-		place-items: center;
-		padding: 3px;
-		text-align: center;
-		font-family: var(--font-display);
-		font-size: var(--text-xs);
-		font-weight: 600;
-		line-height: 1.1;
-		letter-spacing: -0.01em;
-		transform: rotate(-8deg);
-		background: var(--surface);
-	}
-	.stamp.draft { border-style: dashed; }
-	/* The longest label needs a smaller size to clear the ring. */
-	.stamp.community span:last-child { font-size: 0.6875rem; }
-	.stamp.community { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
-	.explain { grid-column: 1; grid-row: 3; align-self: center; font-size: var(--text-sm); margin: var(--space-2) 0 0; }
+	.more-photos { margin: 0; }
 
-	.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: var(--space-4) 0; }
+	.about h2 { margin-top: 0; }
 	.prose { white-space: pre-line; margin: 0; max-width: 65ch; }
+	.source { font-size: var(--text-xs); margin: var(--space-2) 0 0; }
+
+	.record { margin-top: var(--space-5); }
+	.tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--border); }
+	.tab {
+		min-height: 44px;
+		padding: 0 var(--space-4);
+		border: 1px solid transparent;
+		border-bottom: none;
+		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+		background: transparent;
+		color: var(--muted);
+		font-weight: 600;
+	}
+	.tab[aria-selected='true'] { background: var(--surface); border-color: var(--border); color: var(--text); box-shadow: 0 1px 0 var(--surface); margin-bottom: -1px; }
+	.panel { background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); padding: var(--space-4); }
+	.panel[hidden] { display: none; }
+	.panel :global(.evidence) { margin-top: var(--space-3); }
+
+	.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-4); margin: 0; font-size: var(--text-sm); }
+	.facts dt { color: var(--muted); }
+	.facts dd { margin: 0; overflow-wrap: anywhere; }
+	.facts dd.latin { font-size: var(--text-sm); }
+	.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4); }
+
+	/* Phone: one column — photo, name, description, then the tabs. */
+	@media (min-width: 900px) {
+		.plant { max-width: 1120px; }
+		.top {
+			grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+			column-gap: var(--space-5);
+			align-items: start;
+		}
+		.specimen img { object-fit: contain; max-height: calc(100dvh - 22rem); }
+		.about { padding-top: var(--space-1); }
+		.about h2 { font-size: var(--text-lg); }
+	}
 </style>
