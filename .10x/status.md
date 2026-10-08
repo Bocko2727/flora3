@@ -1,8 +1,9 @@
 # Статус — Флора 3
-Обновено: 2026-10-07. Тук е само текущото състояние и предстоящото. Историята е в git (`git log`, PR-ите).
+Обновено: 2026-10-08. Тук е само текущото състояние и предстоящото. Историята е в git (`git log`, PR-ите).
 
 ## Сега
-- `main` = production = `c3f8825` (PR #30); Vercel deploy `READY` (проверено 07.10). Актуалният SHA и отворените PR-и: `git log origin/main`, GitHub.- CI (`ci.yml`): `fast` (`check`, `test:unit`, `build`) → `db-e2e` (локален Supabase в Docker на runner-а: `db:reset`, `test:db`, `test:integration`, `test:e2e`) и `secrets-scan` (gitleaks, само диапазона на PR-а). Node е закрепен на `22.x`.
+- `main` = production = `a6552f9` (PR #33, документи); последният код е от PR #30. Актуалният SHA и отворените PR-и: `git log origin/main`, GitHub.
+- CI (`ci.yml`): `fast` (`check`, `test:unit`, `build`) → `db-e2e` (локален Supabase в Docker на runner-а: `db:reset`, `test:db`, `test:integration`, `test:e2e`) и `secrets-scan` (gitleaks, само диапазона на PR-а). Node е закрепен на `22.x`.
 - Влято в приложението: профил на вида като въпроси и отговори с „AI текст · непроверен“ и лента „Снимки по месеци“ (PR #24); „Качи растение“ — няколко растения (#25); „Снимай сега“ (#26); Image Enhancer — подобрено копие без миграция (#27); двуколонна страница на растението с два таба „Информация“ и „Доказателства“ (#30).
 - Tooling: Svelte MCP (`.mcp.json`), `dependabot.yml` (седмично, major игнорирани; PR-ите ги merge-ва собственикът), PR шаблон. Dependabot PR #29 (`cookie`, `adapter-vercel`, `kit`) е затворен без merge.
 - Хостнат Supabase (`lfmkjxcaokndltdylama`, проверено 07.10): 98 растения, 118 снимки, 1 редактор.
@@ -11,19 +12,21 @@
 - Backup (`backup.yml`, седмичен pg_dump): зелен по предишния статус; не е препроверяван на 07.10.
 - Визия „Хербарий“: зелена тема, светъл и тъмен режим, шрифтове Literata + Onest; страници 15/30/45; изглед „Семейства“.
 - Работен процес: `CLAUDE.md`, 7 агента, hooks и skills (`botanik`, `flora-baseline`, `flora-approval-gate`, `flora-release-pr`, `flora-svelte5-conventions`, `/preflight`, `/new-migration`).
-- Одитът на средата на Claude Code (плъгини, connector-и, permissions) е в `docs/audit/2026-10-07-claude-code-environment.md`. Забележка: твърдението в него, че `status.md` е остарял за PR #32, е поправено с този файл.
+- Одитът на средата е в `docs/audit/2026-10-07-claude-code-environment.md`. От одитите на 08.10: в облачните сесии MCP инструментите се казват `mcp__Github__*`, `mcp__Supabase__*`, а правилата бяха само за `mcp__claude_ai_*` (поправя се в `chore/claude-guards`). Плъгинът `sixth-sense` блокира всяка команда, която съдържа „git push“.
 
 ## Следващи задачи (по ред)
 1. Зелен run на `db-e2e` на `main` (job-ът е нов; два теста са поправени в PR #30 след първия run) — провери в GitHub Actions.
 2. Тест на точността на `botanik`: 20–30 растения със сигурни имена (Top-1, Top-3, калибровка).
 3. P2, с отделен brainstorm: модел „вид → наблюдения → снимки“; бутон, който приема резултата на Ботаника като чернова.
-4. Допълване на защитите от одита (отделна chore задача): `deny/ask` за `rm -rf`, `git merge`, `vercel --prod`, write-инструментите на Vercel; hook за снимките; `settings.local.json` без `enableAllProjectMcpServers`.
+4. Защитите от одита са на клон `chore/claude-guards` (PR чака): правила за двете схеми на имената на MCP, deny за merge и auto-merge, ask за `execute_sql`, `git merge`, `rm -rf`, `gh api`, hook `guard-sql.sh`, самопроверка `test-hooks.sh`.
+5. Обединен одит в `docs/audit/` от двата одита в Project Knowledge (desktop и PowerShell); старият файл се заменя.
 
 ## Чака решение от собственика
 - Двете гъби в `/review` (кратко одобрение).
 - Playwright MCP (пълно одобрение): плъгинът е зареден в машината на собственика с `@latest`, а `CLAUDE.md` казва „още не е одобрен“ — одобри със закрепена версия или махни плъгина.
 - Docker за локален Supabase на служебната машина (пълно одобрение).
-- Изчистване на плъгини и connector-и по одита (ръчно в claude.ai/настройките; нищо не е изпълнено).
+- Изчистване на плъгини и connector-и по одита (ръчно в claude.ai/настройките; стъпките са в artifact „Флора 3 — пулт“).
+- Локално на машината: махни `enableAllProjectMcpServers` от `settings.local.json`; поправи `autoMode.environment` (remote `origin` съществува); `security-guidance` не работи без Python — изключи го или осигури Python.
 - Изтриване на влетите клонове в GitHub (сам; или „Automatically delete head branches“ в настройките).
 - Dependabot alerts в настройките на repo-то (ръчно; `dependabot.yml` вече е в `main`).
 

@@ -13,8 +13,8 @@ else
 fi
 
 case "$TOOL" in
-  *__merge_pull_request)
-    echo "Blocked: merge на PR е само на собственика (Project Instructions §5.1)." >&2
+  *__merge_pull_request|*__enable_pr_auto_merge)
+    echo "Blocked: merge и auto-merge на PR са само на собственика (Project Instructions §5.1)." >&2
     exit 2 ;;
   *__create_or_update_file|*__push_files|*__delete_file)
     if [[ -z "$BRANCH" || "$BRANCH" == "main" || "$BRANCH" == "refs/heads/main" ]]; then
